@@ -1,6 +1,6 @@
 # selective-constant-unload
 
-Alternative to [rails_dev_mode_performance](https://github.com/yyyc514/rails_dev_mode_performance) plugin by Josh Goebel.
+Alternative to [`rails_dev_mode_performance`](https://github.com/yyyc514/rails_dev_mode_performance) plugin by Josh Goebel.
 
 ## Background
 
@@ -10,10 +10,10 @@ I needed performance right away, so here is an alternate implementation.
 
 ## Usage
 
-  script/plugin install git://github.com/Roman2K/selective-constant-unload
+    script/plugin install git://github.com/Roman2K/selective-constant-unload
 
 When the server is started in *development* mode, the special reloading mechanism takes over.
 
 ## Status
 
-Needs some serious testing.
+Needs tests.
