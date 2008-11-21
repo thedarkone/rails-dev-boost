@@ -78,20 +78,22 @@ module SelectiveConstantUnload
         each { |subclass| remove_constant(subclass) }
     end
     
+    module Introspection
+      define_method(:__ivget__, Kernel.instance_method(:instance_variable_get))
+      define_method(:__ivset__, Kernel.instance_method(:instance_variable_set))
+    end
+    
     # egrep -ohR '@\w*([ck]lass|refl|target|own)\w*' activerecord | sort | uniq
     def update_activerecord_related_references(object, const_name)
       return unless object < ActiveRecord::Base
 
-      # Update ActiveRecord's registry of its subclasses
-      registry = ActiveRecord::Base.class_eval("@@subclasses")
-      registry.delete(object)
-      (registry[object.superclass] || []).delete(object)
-
       # Reset references held by macro reflections (klass is lazy loaded, so
       # setting its cache to nil will force the name to be resolved again).
-      ObjectSpace.each_object(ActiveRecord::Reflection::MacroReflection) do |reflection|
-        reflection.instance_eval do
-          @klass = nil if @klass == object
+      ActiveRecord::Base.instance_eval { subclasses }.each do |model|
+        model.reflections.values.each do |reflection|
+          reflection.instance_eval do
+            @klass = nil if @klass == object
+          end
         end
       end
 
@@ -99,10 +101,14 @@ module SelectiveConstantUnload
       # directly in some places -- instead of via proxy_owner -- set it to a
       # reference that will be resolved only upon the next call it receives).
       ObjectSpace.each_object(ActiveRecord::Associations::AssociationProxy) do |proxy|
-        if proxy.instance_variable_get("@owner") == object
-          proxy.instance_variable_set("@owner", FutureReference.new(const_name))
-        end
+        proxy.proxy_extend Introspection  # reimplement missing methods
+        proxy.__ivset__("@owner", FutureReference.new(const_name)) if proxy.__ivget__("@owner") == object
       end
+      
+      # Update ActiveRecord's registry of its subclasses
+      registry = ActiveRecord::Base.class_eval("@@subclasses")
+      registry.delete(object)
+      (registry[object.superclass] || []).delete(object)
     end
   end
 end
