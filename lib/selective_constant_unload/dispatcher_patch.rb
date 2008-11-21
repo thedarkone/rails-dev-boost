@@ -1,6 +1,8 @@
 module SelectiveConstantUnload
   module DispatcherPatch
     def self.apply!
+      require 'action_controller/dispatcher'
+      
       patch = self
       ActionController::Dispatcher.class_eval do
         to_prepare do

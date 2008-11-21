@@ -30,18 +30,14 @@ module SelectiveConstantUnload
     
     # Augmented `load_file'.
     def load_file_with_constant_tracking(path, *args, &block)
-      before = autoloaded_constants.dup
       result = load_file_without_constant_tracking(path, *args, &block)
-      new_constants = autoloaded_constants - before
-
-      # Normalize path
-      full_path = load_paths.map { |dir| File.join(dir, path) }.find { |file| File.exist?(file) } and path = full_path unless File.exist?(path)
-      path = File.expand_path(path)
-
+      new_constants = autoloaded_constants - file_map.values.map(&:constants).flatten
+      
       # Associate newly loaded constants to the file just loaded
       if new_constants.any?
-        file = file_map[path] ||= LoadedFile.new(path)
-        file.constants |= new_constants
+        path_marked_loaded = path.sub('.rb', '')
+        file_map[path_marked_loaded] ||= LoadedFile.new(path)
+        file_map[path_marked_loaded].constants |= new_constants
       end
 
       return result
