@@ -67,7 +67,7 @@ module SelectiveConstantUnload
     def treat_connected_constants(object, const_name)
       return unless Class === object && qualified_const_defined?(const_name)
       remove_direct_subclasses(object)
-      update_activerecord_related_references(object, const_name)
+      update_activerecord_related_references(object)
       autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_constant(const) }
     end
     
@@ -78,7 +78,7 @@ module SelectiveConstantUnload
     end
     
     # egrep -ohR '@\w*([ck]lass|refl|target|own)\w*' activerecord | sort | uniq
-    def update_activerecord_related_references(klass, const_name)
+    def update_activerecord_related_references(klass)
       return unless klass < ActiveRecord::Base
 
       # Reset references held by macro reflections (klass is lazy loaded, so
