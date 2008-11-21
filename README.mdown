@@ -4,15 +4,15 @@ Alternative to [`rails_dev_mode_performance`](https://github.com/yyyc514/rails_d
 
 ## Background
 
-Why create a similar plugin? Because Josh Goebel's is flawed attempts to cache templates in a way that fails with recent versions of Rails, and removing the code that fails reveals another issue: it stats files that may not exist without trying to find their real path first. That would be fixable is the code wasn't such a mess (no offense).
+Why create a similar plugin? Because I couldn't get Josh Goebel's to work in my projects. His attempts to cache templates in a way that fails with recent versions of Rails, and removing the faulty chunk of code revealed another issue: it stats files that may not exist without trying to find their real path first. That would be fixable is the code wasn't such a mess (no offense).
 
-I needed performance right away, so here is an alternate implementation.
+I needed better performance in development mode right away, so here is an alternative implementation.
 
 ## Usage
 
     script/plugin install git://github.com/Roman2K/selective-constant-unload
 
-When the server is started in *development* mode, the special reloading mechanism takes over.
+When the server is started in *development* mode, the special unloading mechanism takes over.
 
 ## Status
 
