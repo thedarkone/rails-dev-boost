@@ -46,11 +46,9 @@ module SelectiveConstantUnload
     # Augmented `remove_constant'.
     def remove_constant_with_treatment_of_connections(const_name)
       object = const_name.constantize rescue nil
-      result = remove_constant_without_treatment_of_connections(const_name)
-
-      remove_tracks_of_unloaded_const(const_name)
       treat_connected_constants(object, const_name)
-
+      result = remove_constant_without_treatment_of_connections(const_name)
+      remove_tracks_of_unloaded_const(const_name)
       return result
     end
     
@@ -91,7 +89,7 @@ module SelectiveConstantUnload
 
       # Reset references held by macro reflections (klass is lazy loaded, so
       # setting its cache to nil will force the name to be resolved again).
-      Object.subclasses_of(ActiveRecord::Reflection::ClassMethods::MacroReflection).each do |reflection|
+      ObjectSpace.each_object(ActiveRecord::Reflection::MacroReflection) do |reflection|
         reflection.instance_eval do
           @klass = nil if @klass == object
         end
@@ -100,8 +98,10 @@ module SelectiveConstantUnload
       # Reset references held by association proxies (since @owner is accessed
       # directly in some places -- instead of via proxy_owner -- set it to a
       # reference that will be resolved only upon the next call it receives).
-      Object.subclasses_of(ActiveRecord::Associations::AssociationProxy).each do |proxy|
-        proxy.instance_variable_set("@owner", FutureReference.new(const_name)) if proxy.instance_variable_get("@owner") == object
+      ObjectSpace.each_object(ActiveRecord::Associations::AssociationProxy) do |proxy|
+        if proxy.instance_variable_get("@owner") == object
+          proxy.instance_variable_set("@owner", FutureReference.new(const_name))
+        end
       end
     end
   end
