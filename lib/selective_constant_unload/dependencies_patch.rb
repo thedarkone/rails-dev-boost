@@ -7,8 +7,7 @@ module SelectiveConstantUnload
         remove_method :remove_unloadable_constants!
         alias_method_chain :load_file, 'constant_tracking'
         alias_method_chain :remove_constant, 'treatment_of_connections'
-        extend self   # FIXME:  Why is this necessary for the methods of this module to be
-                      #         visible by each other? Try to get rid of it.
+        extend self
       end
     end
     
@@ -23,7 +22,7 @@ module SelectiveConstantUnload
     end
     
     def unload_modified_files
-      file_map.each do |path, file|
+      file_map.each_value do |file|
         file.constants.each { |const| remove_constant(const) } if file.changed?
       end
     end
@@ -59,8 +58,8 @@ module SelectiveConstantUnload
       file_map.each do |path, file|
         file.constants.delete(const)
         if file.constants.empty?
-          file_map.delete(path)
           loaded.delete(path)
+          file_map.delete(path)
         end
       end
     end
@@ -85,7 +84,7 @@ module SelectiveConstantUnload
       # Reset references held by macro reflections (klass is lazy loaded, so
       # setting its cache to nil will force the name to be resolved again).
       ActiveRecord::Base.instance_eval { subclasses }.each do |model|
-        model.reflections.values.each do |reflection|
+        model.reflections.each_value do |reflection|
           reflection.instance_eval do
             @klass = nil if @klass == object
           end
