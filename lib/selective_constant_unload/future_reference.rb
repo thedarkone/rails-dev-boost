@@ -11,6 +11,9 @@ module SelectiveConstantUnload
 
     def method_missing(method, *args, &block)
       __setobj__(@const_name.constantize) if __getobj__.nil?
+      
+      p :future => @constantize, :meth => method
+      
       super
     end
   end
