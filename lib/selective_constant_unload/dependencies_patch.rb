@@ -78,23 +78,23 @@ module SelectiveConstantUnload
     end
     
     # egrep -ohR '@\w*([ck]lass|refl|target|own)\w*' activerecord | sort | uniq
-    def update_activerecord_related_references(object, const_name)
-      return unless object < ActiveRecord::Base
+    def update_activerecord_related_references(klass, const_name)
+      return unless klass < ActiveRecord::Base
 
       # Reset references held by macro reflections (klass is lazy loaded, so
       # setting its cache to nil will force the name to be resolved again).
       ActiveRecord::Base.instance_eval { subclasses }.each do |model|
         model.reflections.each_value do |reflection|
           reflection.instance_eval do
-            @klass = nil if @klass == object
+            @klass = nil if @klass == klass
           end
         end
       end
 
       # Update ActiveRecord's registry of its subclasses
       registry = ActiveRecord::Base.class_eval("@@subclasses")
-      registry.delete(object)
-      (registry[object.superclass] || []).delete(object)
+      registry.delete(klass)
+      (registry[klass.superclass] || []).delete(klass)
     end
   end
 end
