@@ -1,4 +1,4 @@
-module SelectiveConstantUnload
+module RailsDevelopmentBoost
   module DependenciesPatch
     def self.apply!
       patch = self

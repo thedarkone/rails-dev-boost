@@ -1,4 +1,4 @@
-module SelectiveConstantUnload
+module RailsDevelopmentBoost
   module DispatcherPatch
     def self.apply!
       require 'action_controller/dispatcher'

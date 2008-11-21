@@ -1,4 +1,4 @@
 if Rails.env.development?
-  require 'selective_constant_unload'
-  SelectiveConstantUnload.apply!
+  require 'rails_development_boost'
+  RailsDevelopmentBoost.apply!
 end

@@ -2,15 +2,15 @@ require 'test/unit'
 require 'mocha'
 
 require 'active_support'
-require 'selective_constant_unload'
+require 'rails_development_boost'
 
-class SelectiveConstantUnload::DependenciesPatchTest < Test::Unit::TestCase
-  include SelectiveConstantUnload
+class RailsDevelopmentBoost::DependenciesPatchTest < Test::Unit::TestCase
+  include RailsDevelopmentBoost
   
 # private
 
   def test_remove_tracks_of_unloaded_const
-    deps = Object.new.extend(SelectiveConstantUnload::DependenciesPatch)
+    deps = Object.new.extend(RailsDevelopmentBoost::DependenciesPatch)
     
     File.stubs :mtime
     

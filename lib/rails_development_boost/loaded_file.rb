@@ -1,4 +1,4 @@
-module SelectiveConstantUnload
+module RailsDevelopmentBoost
   class LoadedFile
     attr_accessor :constants
   
