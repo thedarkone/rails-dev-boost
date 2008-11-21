@@ -4,7 +4,7 @@ Alternative to Josh Goebel's [`rails_dev_mode_performance`](https://github.com/y
 
 ## Background
 
-Why create a similar plugin? Because I couldn't get Josh Goebel's to work in my projects. His attempts keep templates cached in a way that fails with recent versions of Rails, and removing the faulty chunk of code revealed another issue: it stats source files that may not exist, without trying to find their real path beforehand. That would be fixable is the code wasn't such a mess (no offense).
+Why create a similar plugin? Because I couldn't get Josh Goebel's to work in my projects. His attempts to keep templates cached in a way that fails with recent versions of Rails. Also, removing the faulty chunk of code revealed another issue: it stats source files that may not exist, without trying to find their real path beforehand. That would be fixable is the code wasn't such a mess (no offense).
 
 I needed better performance in development mode right away, so here is an alternative implementation.
 
