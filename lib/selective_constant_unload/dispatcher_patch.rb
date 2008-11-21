@@ -16,7 +16,7 @@ module SelectiveConstantUnload
     
     # Overridden.
     def cleanup_application
-      # ActiveRecord::Base.reset_subclasses if defined?(ActiveRecord)
+      #ActiveRecord::Base.reset_subclasses if defined?(ActiveRecord)
       ActiveSupport::Dependencies.clear
       ActiveRecord::Base.clear_reloadable_connections! if defined?(ActiveRecord)
     end
