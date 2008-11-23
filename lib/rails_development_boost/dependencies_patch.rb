@@ -40,7 +40,7 @@ module RailsDevelopmentBoost
       
       # Associate newly loaded constants to the file just loaded
       if new_constants.any?
-        path_marked_loaded = path.sub('.rb', '')
+        path_marked_loaded = path.sub(/\.rb$/, '')
         file_map[path_marked_loaded] ||= LoadedFile.new(path)
         file_map[path_marked_loaded].constants |= new_constants
       end

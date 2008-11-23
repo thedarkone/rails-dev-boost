@@ -1,0 +1,2 @@
+module Mut::M
+end
