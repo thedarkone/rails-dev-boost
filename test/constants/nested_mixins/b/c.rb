@@ -1,0 +1,2 @@
+class B::C
+end

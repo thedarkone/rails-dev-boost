@@ -6,13 +6,15 @@ require 'rails_development_boost'
 RailsDevelopmentBoost.apply!
 
 class RailsDevelopmentBoostTest < Test::Unit::TestCase
-  def test_constant_update
+  def test_single_removal
+    load_from "single_removal"
+    
     assert_same_object_id('A') { reload! }
     assert_different_object_id('A') { reload! { update("a.rb") } }
     assert_different_object_id('A') { reload! { update("a.rb") } }
     assert_same_object_id('A') { reload! }
     
-    assert_same_object_id('D') do
+    assert_same_object_id('B') do
       assert_different_object_id('A') do
         reload! do
           update("a.rb")
@@ -22,15 +24,21 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
   end
   
   def test_subclass_update_cascade
+    load_from "subclass"
+    
     assert_different_object_id 'A', 'B' do
-      reload! do
-        update("a.rb")
+      assert_same_object_id 'C' do
+        reload! do
+          update("a.rb")
+        end
       end
     end
   end
   
-  def test_nested_constants_update_cascade
-    assert_different_object_id 'A', 'A::C' do
+  def test_nested_constant_update_cascade
+    load_from "deep_nesting"
+    
+    assert_different_object_id 'A::B::C::D', 'A::B::C', 'A::B', 'A' do
       reload! do
         update("a.rb")
       end
@@ -38,6 +46,8 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
   end
   
   def test_mixin_update_cascade
+    load_from "mixins"
+    
     assert_different_object_id 'Mixin', 'Client' do
       reload! do
         update("mixin.rb")
@@ -50,48 +60,56 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
     reload! do
       update("mixin.rb")
     end
-    Deps.load_paths.unshift("#{CONSTANT_DIR}/update")
+    Deps.load_paths.unshift("#{@constant_dir}/update")
     
     assert !Client.public_method_defined?('from_mixin')
     assert Client.public_method_defined?('from_mixin_update')
   end
   
   def test_prevention_of_removal_cycle
+    load_from "double_removal"
+    
     # Failure of this test = SystemStackError: stack level too deep
-    assert_different_object_id 'Mut::M', 'Mut::C', 'Mut' do
+    assert_different_object_id 'Ns::M', 'Ns::C', 'Ns' do
       reload! do
-        update("mut/m.rb")
+        update("ns/m.rb")
       end
     end
   end
   
   def test_nested_mixins
+    load_from "nested_mixins"
+    
     assert_different_object_id 'Ma::Mb::Mc', 'Ma::Mb', 'Ma' do
-      reload! do
-        update("ma/mb/mc.rb")
+      assert_different_object_id 'Oa::Ob::Oc', 'Oa::Ob', 'Oa' do
+        assert_same_object_id 'B::C' do
+          reload! do
+            update("ma/mb/mc.rb")
+          end
+        end
       end
     end
   end
   
   def test_consistency_of_activerecord_registry
-    Deps.load_paths = ["#{CONSTANT_DIR}/db_models"]
+    load_from "active_record"
     
-    fetch_detected_ar_subclasses = lambda do
+    fetch_registered_ar_subclasses = lambda do
       ActiveRecord::Base.instance_eval { subclasses }.sort_by(&:name)
     end
     
     # Load initial version of the models
-    assert_equal [Comment, Message, Other, Post], fetch_detected_ar_subclasses.call
+    assert_equal [Comment, Message, Other, Post], fetch_registered_ar_subclasses[]
     
     # AR::Base subclass tree is updated
     assert_different_object_id 'Message', 'Post', 'Comment' do
       assert_same_object_id 'Other' do
         reload! do
-          update("db_models/message.rb")
+          update("message.rb")
         end
       end
     end
-    assert_equal [Comment, Message, Other, Post], fetch_detected_ar_subclasses.call
+    assert_equal [Comment, Message, Other, Post], fetch_registered_ar_subclasses[]
     
     # Create initial references to reflection classes
     assert_equal Comment, Post.new.comments.new.class
@@ -100,14 +118,14 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
     assert_same_object_id 'Post' do
       assert_different_object_id 'Comment' do
         reload! do
-          update("db_models/comment.rb")
+          update("comment.rb")
         end
       end
     end
     assert_equal Comment, Post.new.comments.new.class
   end
   
-private
+protected
 
   CONSTANT_DIR    = "#{File.dirname(__FILE__)}/constants".freeze
   CONSTANT_FILES  = Dir.chdir(CONSTANT_DIR) { Dir.glob("**/*.rb") }.freeze
@@ -117,6 +135,7 @@ private
   def setup
     # Cleanup
     clean_up! "setup"
+    @constant_dir = CONSTANT_DIR
     
     # Configuration
     Deps.load_paths = [CONSTANT_DIR]
@@ -133,13 +152,17 @@ private
   
 private
 
+  def load_from(root)
+    @constant_dir = "#{CONSTANT_DIR}/#{root}"
+    Deps.load_paths = [@constant_dir]
+  end
+
   def update(path)
-    stub_mtime(path, File.mtime("#{CONSTANT_DIR}/#{path}") + 1)
+    stub_mtime(path, File.mtime("#{@constant_dir}/#{path}") + 1)
   end
   
   def stub_mtime(path, time=1)
-    path = "#{CONSTANT_DIR}/#{path}"
-    File.stubs(:mtime).with(path).returns time
+    File.stubs(:mtime).with("#{@constant_dir}/#{path}").returns time
   end
   
   def reload!

@@ -90,7 +90,7 @@ module RailsDevelopmentBoost
         modules.dup.each do |other|
           next unless other < mod
           next unless other.superclass == mod if Class === mod
-          next unless other.name.constantize == other
+          next unless qualified_const_defined?(other.name) && other.name.constantize == other
           remove_constant(other.name)
         end
       end
