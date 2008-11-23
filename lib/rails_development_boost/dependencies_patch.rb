@@ -3,8 +3,8 @@ module RailsDevelopmentBoost
     def self.apply!
       patch = self
       ActiveSupport::Dependencies.module_eval do
-        include patch
         remove_method :remove_unloadable_constants!
+        include patch
         alias_method_chain :load_file, 'constant_tracking'
         alias_method_chain :remove_constant, 'handling_of_connections'
         extend self
@@ -20,17 +20,20 @@ module RailsDevelopmentBoost
     mattr_accessor :constants_being_removed
     self.constants_being_removed = []
     
-    # Overridden.
-    def remove_unloadable_constants!
-      #autoloaded_constants.each { |const| remove_constant const }
-      #autoloaded_constants.clear
-      explicitly_unloadable_constants.each { |const| remove_constant const }
-    end
-    
     def unload_modified_files
-      file_map.each_value do |file|
+      file_map.values.each do |file|
         file.constants.each { |const| remove_constant(const) } if file.changed?
       end
+    end
+    
+    def remove_explicitely_unloadable_constants!
+      explicitly_unloadable_constants.each { |const| remove_constant(const) }
+    end
+    
+    # Overridden.
+    def remove_unloadable_constants!
+      autoloaded_constants.dup.each { |const| remove_constant(const) }
+      remove_explicitely_unloadable_constants!
     end
     
     # Augmented `load_file'.
@@ -52,7 +55,7 @@ module RailsDevelopmentBoost
     def remove_constant_with_handling_of_connections(const_name)
       fetch_module_cache do
         prevent_further_removal_of(const_name) do
-          object = const_name.constantize rescue nil
+          object = const_name.constantize if qualified_const_defined?(const_name)
           handle_connected_constants(object, const_name) if object
           result = remove_constant_without_handling_of_connections(const_name)
           clear_tracks_of_removed_const(const_name)
@@ -60,7 +63,7 @@ module RailsDevelopmentBoost
         end
       end
     end
-  
+    
   private
     
     def handle_connected_constants(object, const_name)
@@ -73,7 +76,7 @@ module RailsDevelopmentBoost
     def clear_tracks_of_removed_const(const_name)
       autoloaded_constants.delete(const_name)
       module_cache.delete_if { |mod| mod.name == const_name }
-      file_map.each do |path, file|
+      file_map.dup.each do |path, file|
         file.constants.delete(const_name)
         if file.constants.empty?
           loaded.delete(path)
@@ -84,7 +87,7 @@ module RailsDevelopmentBoost
     
     def remove_dependent_modules(mod)
       fetch_module_cache do |modules|
-        modules.each do |other|
+        modules.dup.each do |other|
           next unless other < mod
           next unless other.superclass == mod if Class === mod
           next unless other.name.constantize == other

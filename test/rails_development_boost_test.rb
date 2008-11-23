@@ -63,35 +63,26 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
   
 private
 
+  CONSTANT_DIR    = "#{File.dirname(__FILE__)}/constants".freeze
+  CONSTANT_FILES  = Dir.chdir(CONSTANT_DIR) { Dir.glob("**/*.rb") }.freeze
+  
   Deps = ActiveSupport::Dependencies
   
-  CONSTANT_DIR    = File.dirname(__FILE__) + '/constants'
-  CONSTANT_FILES  = Dir.chdir(CONSTANT_DIR) { Dir.glob("**/*.rb") }
-  CONSTANTS       = %w( A B A::C D Mixin Client Mut Mut::M Mut::C )
-  
   def setup
+    # Cleanup
+    clean_up! "setup"
+    
     # Configuration
     Deps.load_paths = [CONSTANT_DIR]
     Deps.logger = Logger.new(STDERR)
     Deps.log_activity = false
-
-    # Cleanup
-    CONSTANTS.each do |const|
-      if Deps.qualified_const_defined?(const)
-        Deps.instance_eval { remove_constant(const) }
-      end
-    end
-    Deps.history.clear
-    
-    # Sanity checks
-    assert_equal([], Deps.constants_being_removed)
-    assert_equal([], Deps.module_cache)
-    assert_equal(Set.new, Deps.loaded)
-    assert_equal({}, Deps.file_map)
-    assert_equal([], Deps.autoloaded_constants)
     
     # Stub mtimes
     CONSTANT_FILES.each { |file| stub_mtime(file) }
+  end
+  
+  def teardown
+    clean_up! "teardown"
   end
   
 private
@@ -102,7 +93,6 @@ private
   
   def stub_mtime(path, time=1)
     path = "#{CONSTANT_DIR}/#{path}"
-    File.stubs(:exist?).with(path).returns true
     File.stubs(:mtime).with(path).returns time
   end
   
@@ -110,6 +100,19 @@ private
     ActionController::Dispatcher.new.cleanup_application
     yield if block_given?
     ActionController::Dispatcher.new.reload_application
+  end
+  
+  def clean_up!(stage)
+    message = "#{stage} dependency cleanup of <#{@method_name}> failed"
+    
+    Deps.clear
+    Deps.history.clear
+    
+    assert_equal([], Deps.constants_being_removed, message)
+    assert_equal([], Deps.module_cache, message)
+    assert_equal(Set.new, Deps.loaded, message)
+    assert_equal({}, Deps.file_map, message)
+    assert_equal([], Deps.autoloaded_constants, message)
   end
   
   def assert_same_object_id(*expressions, &block)

@@ -1,14 +1,10 @@
 module RailsDevelopmentBoost
   module DispatcherPatch
     def self.apply!
-      require 'action_controller/dispatcher'
-      
       patch = self
+      require 'action_controller/dispatcher'
       ActionController::Dispatcher.class_eval do
-        to_prepare do
-          ActiveSupport::Dependencies.unload_modified_files
-        end
-        
+        to_prepare { ActiveSupport::Dependencies.unload_modified_files }
         remove_method :cleanup_application
         include patch
       end
@@ -17,7 +13,7 @@ module RailsDevelopmentBoost
     # Overridden.
     def cleanup_application
       #ActiveRecord::Base.reset_subclasses if defined?(ActiveRecord)
-      #ActiveSupport::Dependencies.clear
+      ActiveSupport::Dependencies.remove_explicitely_unloadable_constants!
       ActiveRecord::Base.clear_reloadable_connections! if defined?(ActiveRecord)
     end
   end
