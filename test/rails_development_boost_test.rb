@@ -125,7 +125,7 @@ private
   end
   
   def each_object_id_diff(alter, expressions)
-    ids_before = expressions.map { |expr| [expr.dup, eval("#{expr.dup}.object_id")].dup }
+    ids_before = expressions.map { |expr| [expr, eval("#{expr}.object_id")] }
     alter.call
     ids_before.each do |expr, before|
       after = eval("#{expr}.object_id")
