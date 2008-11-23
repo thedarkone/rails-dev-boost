@@ -57,6 +57,7 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
   end
   
   def test_prevention_of_removal_cycle
+    # Failure of this test = SystemStackError: stack level too deep
     assert_different_object_id 'Mut::M', 'Mut::C', 'Mut' do
       reload! do
         update("mut/m.rb")
@@ -64,15 +65,23 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
     end
   end
   
+  def test_nested_mixins
+    assert_different_object_id 'Ma::Mb::Mc', 'Ma::Mb', 'Ma' do
+      reload! do
+        update("ma/mb/mc.rb")
+      end
+    end
+  end
+  
   def test_consistency_of_activerecord_registry
     Deps.load_paths = ["#{CONSTANT_DIR}/db_models"]
     
-    find_detected_ar_subclasses = lambda do
+    fetch_detected_ar_subclasses = lambda do
       ActiveRecord::Base.instance_eval { subclasses }.sort_by(&:name)
     end
     
     # Load initial version of the models
-    assert_equal [Comment, Message, Other, Post], find_detected_ar_subclasses.call
+    assert_equal [Comment, Message, Other, Post], fetch_detected_ar_subclasses.call
     
     # AR::Base subclass tree is updated
     assert_different_object_id 'Message', 'Post', 'Comment' do
@@ -82,7 +91,7 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
         end
       end
     end
-    assert_equal [Comment, Message, Other, Post], find_detected_ar_subclasses.call
+    assert_equal [Comment, Message, Other, Post], fetch_detected_ar_subclasses.call
     
     # Create initial references to reflection classes
     assert_equal Comment, Post.new.comments.new.class
