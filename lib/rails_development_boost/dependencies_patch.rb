@@ -6,13 +6,19 @@ module RailsDevelopmentBoost
         include patch
         remove_method :remove_unloadable_constants!
         alias_method_chain :load_file, 'constant_tracking'
-        alias_method_chain :remove_constant, 'treatment_of_connections'
+        alias_method_chain :remove_constant, 'handling_of_connections'
         extend self
       end
     end
     
+    mattr_accessor :module_cache
+    self.module_cache = []
+    
     mattr_accessor :file_map
     self.file_map = {}
+    
+    mattr_accessor :constants_being_removed
+    self.constants_being_removed = []
     
     # Overridden.
     def remove_unloadable_constants!
@@ -43,20 +49,32 @@ module RailsDevelopmentBoost
     end
     
     # Augmented `remove_constant'.
-    def remove_constant_with_treatment_of_connections(const_name)
-      object = const_name.constantize rescue nil
-      treat_connected_constants(object, const_name)
-      result = remove_constant_without_treatment_of_connections(const_name)
-      remove_tracks_of_unloaded_const(const_name)
-      return result
+    def remove_constant_with_handling_of_connections(const_name)
+      fetch_module_cache do
+        prevent_further_removal_of(const_name) do
+          object = const_name.constantize rescue nil
+          handle_connected_constants(object, const_name) if object
+          result = remove_constant_without_handling_of_connections(const_name)
+          clear_tracks_of_removed_const(const_name)
+          return result
+        end
+      end
     end
-    
+  
   private
     
-    def remove_tracks_of_unloaded_const(const)
-      autoloaded_constants.delete(const)
+    def handle_connected_constants(object, const_name)
+      return unless Module === object && qualified_const_defined?(const_name)
+      remove_dependent_modules(object)
+      update_activerecord_related_references(object)
+      autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_constant(const) }
+    end
+    
+    def clear_tracks_of_removed_const(const_name)
+      autoloaded_constants.delete(const_name)
+      module_cache.delete_if { |mod| mod.name == const_name }
       file_map.each do |path, file|
-        file.constants.delete(const)
+        file.constants.delete(const_name)
         if file.constants.empty?
           loaded.delete(path)
           file_map.delete(path)
@@ -64,21 +82,20 @@ module RailsDevelopmentBoost
       end
     end
     
-    def treat_connected_constants(object, const_name)
-      return unless Class === object && qualified_const_defined?(const_name)
-      remove_direct_subclasses(object)
-      update_activerecord_related_references(object)
-      autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_constant(const) }
-    end
-    
-    def remove_direct_subclasses(klass)
-      Object.subclasses_of(klass).
-        select { |subclass| subclass.superclass == klass }.
-        each { |subclass| remove_constant(subclass) }
+    def remove_dependent_modules(mod)
+      fetch_module_cache do |modules|
+        modules.each do |other|
+          next unless other < mod
+          next unless other.superclass == mod if Class === mod
+          next unless other.name.constantize == other
+          remove_constant(other.name)
+        end
+      end
     end
     
     # egrep -ohR '@\w*([ck]lass|refl|target|own)\w*' activerecord | sort | uniq
     def update_activerecord_related_references(klass)
+      return unless defined?(ActiveRecord)
       return unless klass < ActiveRecord::Base
 
       # Reset references held by macro reflections (klass is lazy loaded, so
@@ -95,6 +112,30 @@ module RailsDevelopmentBoost
       registry = ActiveRecord::Base.class_eval("@@subclasses")
       registry.delete(klass)
       (registry[klass.superclass] || []).delete(klass)
+    end
+  
+  private
+
+    def fetch_module_cache
+      return(yield(module_cache)) if module_cache.any?
+      
+      ObjectSpace.each_object(Module) { |mod| module_cache << mod unless (mod.name || "").empty? }
+      begin
+        yield module_cache
+      ensure
+        module_cache.clear
+      end
+    end
+
+    def prevent_further_removal_of(const_name)
+      return if constants_being_removed.include?(const_name)
+      
+      constants_being_removed << const_name
+      begin
+        yield
+      ensure
+        constants_being_removed.delete(const_name)
+      end
     end
   end
 end
