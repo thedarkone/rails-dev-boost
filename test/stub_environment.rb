@@ -1,6 +1,6 @@
 require 'active_support'
-require 'action_controller/dispatcher'
 
+require 'action_controller/dispatcher'
 module ActionController
   def self.define_nested_module(name)
     name.to_s.split('::').inject(self) { |namespace, name| namespace.const_set(name, Module.new) }
@@ -19,3 +19,8 @@ module ActionController
   asset_cache = define_nested_module("ActionView::Helpers::AssetTagHelper::AssetTag::Cache")
   def asset_cache.clear; end
 end
+
+require 'active_record'
+ActiveRecord::Base.class_eval { def self.columns; []; end }
+ActiveRecord::Base.class_eval { def self.inspect; super; end }
+ActiveRecord::Associations::HasManyAssociation.class_eval { def construct_sql; end }

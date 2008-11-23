@@ -1,2 +1,2 @@
-class Comment < ActiveRecord::Base
+class Comment < Message
 end

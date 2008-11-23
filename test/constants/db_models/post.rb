@@ -1,3 +1,3 @@
-class Post < ActiveRecord::Base
+class Post < Message
   has_many :comments
 end

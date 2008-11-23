@@ -111,7 +111,7 @@ module RailsDevelopmentBoost
         end
       end
 
-      # Update ActiveRecord's registry of its subclasses
+      # Update ActiveRecord subclass tree
       registry = ActiveRecord::Base.class_eval("@@subclasses")
       registry.delete(klass)
       (registry[klass.superclass] || []).delete(klass)

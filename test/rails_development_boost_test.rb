@@ -45,10 +45,13 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
     end
     
     assert Client.public_method_defined?('from_mixin') # sanity check
+    
+    # Simulate a change in the mixin file
     reload! do
       update("mixin.rb")
     end
     Deps.load_paths.unshift("#{CONSTANT_DIR}/update")
+    
     assert !Client.public_method_defined?('from_mixin')
     assert Client.public_method_defined?('from_mixin_update')
   end
@@ -59,6 +62,40 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
         update("mut/m.rb")
       end
     end
+  end
+  
+  def test_consistency_of_activerecord_registry
+    Deps.load_paths = ["#{CONSTANT_DIR}/db_models"]
+    
+    find_detected_ar_subclasses = lambda do
+      ActiveRecord::Base.instance_eval { subclasses }.sort_by(&:name)
+    end
+    
+    # Load initial version of the models
+    assert_equal [Comment, Message, Other, Post], find_detected_ar_subclasses.call
+    
+    # AR::Base subclass tree is updated
+    assert_different_object_id 'Message', 'Post', 'Comment' do
+      assert_same_object_id 'Other' do
+        reload! do
+          update("db_models/message.rb")
+        end
+      end
+    end
+    assert_equal [Comment, Message, Other, Post], find_detected_ar_subclasses.call
+    
+    # Create initial references to reflection classes
+    assert_equal Comment, Post.new.comments.new.class
+    
+    # Reflections are updated
+    assert_same_object_id 'Post' do
+      assert_different_object_id 'Comment' do
+        reload! do
+          update("db_models/comment.rb")
+        end
+      end
+    end
+    assert_equal Comment, Post.new.comments.new.class
   end
   
 private
