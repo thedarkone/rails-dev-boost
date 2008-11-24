@@ -14,10 +14,6 @@ I needed better performance in development mode right away, so here is an altern
 
 When the server is started in *development* mode, the special unloading mechanism takes over.
 
-## Status
-
-Needs tests.
-
 ## Credits
 
 Written by [Roman Le Négrate](http://roman.flucti.com) ([contact](mailto:roman.lenegrate@gmail.com)).
