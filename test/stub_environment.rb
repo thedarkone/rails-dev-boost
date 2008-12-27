@@ -1,10 +1,25 @@
 require 'active_support'
 
+require 'action_controller'
 require 'action_controller/dispatcher'
+
 module ActionController
   def self.define_nested_module(name)
-    name.to_s.split('::').inject(self) { |namespace, name| namespace.const_set(name, Module.new) }
+    name.to_s.split('::').inject(self) do |namespace, name|
+      begin
+        namespace.const_get(name)
+      rescue LoadError
+        namespace.const_set(name, Module.new)
+      end
+    end
   end
+  
+  Dispatcher.class_eval(<<-RUBY)
+    if defined? @@middleware
+      m = @@middleware
+      def m.build(*a) end
+    end
+  RUBY
   
   # Routing::Routes.reload
   routes = define_nested_module("Routing::Routes")

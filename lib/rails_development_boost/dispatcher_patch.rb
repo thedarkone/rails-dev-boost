@@ -2,6 +2,7 @@ module RailsDevelopmentBoost
   module DispatcherPatch
     def self.apply!
       patch = self
+      require 'action_controller'
       require 'action_controller/dispatcher'
       ActionController::Dispatcher.class_eval do
         to_prepare { ActiveSupport::Dependencies.unload_modified_files }
