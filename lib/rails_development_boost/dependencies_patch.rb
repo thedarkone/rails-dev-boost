@@ -88,7 +88,7 @@ module RailsDevelopmentBoost
     def remove_dependent_modules(mod)
       fetch_module_cache do |modules|
         modules.dup.each do |other|
-          next unless other < mod
+          next unless other < mod || other.metaclass.ancestors.include?(mod)
           next unless other.superclass == mod if Class === mod
           next unless qualified_const_defined?(other.name) && other.name.constantize == other
           remove_constant(other.name)

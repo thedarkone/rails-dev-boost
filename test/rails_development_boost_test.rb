@@ -91,6 +91,21 @@ class RailsDevelopmentBoostTest < Test::Unit::TestCase
     end
   end
   
+  def test_singleton_mixins
+    load_from "singleton_mixins"
+    
+    assert_different_object_id 'A' do
+      reload! do
+        update("b.rb")
+      end
+    end
+    assert_same_object_id 'B' do
+      reload! do
+        update("a.rb")
+      end
+    end
+  end
+  
   def test_consistency_of_activerecord_registry
     load_from "active_record"
     
