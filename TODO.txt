@@ -1,0 +1,2 @@
+* Update ActiveRecord reflections for which the module passed as the :extend option has been unloaded.
+	- update reference:  MacroReflection#@options[:extend]
