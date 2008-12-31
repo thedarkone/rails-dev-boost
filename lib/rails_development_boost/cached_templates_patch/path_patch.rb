@@ -28,6 +28,7 @@ module RailsDevelopmentBoost
       # we lazy load all the templates on the fly
       def reload!
         @paths ||= {}
+        @disk_cache = {}
         @loaded = true
       end
     
@@ -59,7 +60,12 @@ module RailsDevelopmentBoost
     
       # we need to be looking for all the potential template extensions, e.g. products/index should match products/index.html.erb etc.
       def template_file_candidates_for(path)
-        Dir.glob(glob_template_matcher_for(path)).reject {|file_or_dir| File.directory?(file_or_dir)}
+        hit_disk_for_matching_templates(glob_template_matcher_for(path))
+      end
+      
+      # @disk_cache is useful for apps using inherit_views plugin
+      def hit_disk_for_matching_templates(template_match_str)
+        @disk_cache[template_match_str] ||= Dir.glob(template_match_str).reject {|file_or_dir| File.directory?(file_or_dir)}
       end
     
       def glob_template_matcher_for(path)
