@@ -20,6 +20,9 @@ module RailsDevelopmentBoost
     mattr_accessor :constants_being_removed
     self.constants_being_removed = []
     
+    mattr_accessor :explicit_dependencies
+    self.explicit_dependencies = {}
+    
     def unload_modified_files
       file_map.values.each do |file|
         file.constants.each { |const| remove_constant(const) } if file.changed?
@@ -64,13 +67,22 @@ module RailsDevelopmentBoost
       end
     end
     
+    def add_explicit_dependency(parent, child)
+      (explicit_dependencies[parent.to_s] ||= []) << child.to_s
+    end
+    
   private
     
     def handle_connected_constants(object, const_name)
       return unless Module === object && qualified_const_defined?(const_name)
+      remove_explicit_dependencies_of(const_name)
       remove_dependent_modules(object)
       update_activerecord_related_references(object)
       autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_constant(const) }
+    end
+    
+    def remove_explicit_dependencies_of(const_name)
+      explicit_dependencies[const_name].each {|depending_const| remove_constant(depending_const)} if explicit_dependencies[const_name]
     end
     
     def clear_tracks_of_removed_const(const_name)
