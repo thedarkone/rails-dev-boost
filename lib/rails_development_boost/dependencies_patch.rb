@@ -82,7 +82,7 @@ module RailsDevelopmentBoost
     end
     
     def remove_explicit_dependencies_of(const_name)
-      explicit_dependencies[const_name].each {|depending_const| remove_constant(depending_const)} if explicit_dependencies[const_name]
+      explicit_dependencies.delete(const_name).uniq.each {|depending_const| remove_constant(depending_const)} if explicit_dependencies[const_name]
     end
     
     def clear_tracks_of_removed_const(const_name)
