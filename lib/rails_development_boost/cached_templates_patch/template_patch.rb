@@ -33,6 +33,7 @@ module RailsDevelopmentBoost
             ivar = ActiveSupport::Memoizable::MEMOIZED_IVAR.call(attr)
             instance_variable_get(ivar).clear if instance_variable_defined?(ivar)
           end
+          undef_my_compiled_methods!
         end
         self
       end
