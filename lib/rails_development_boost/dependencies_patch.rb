@@ -45,13 +45,15 @@ module RailsDevelopmentBoost
       new_constants = autoloaded_constants - file_map.values.map(&:constants).flatten
       
       # Associate newly loaded constants to the file just loaded
-      if new_constants.any?
-        path_marked_loaded = path.sub(/\.rb$/, '')
-        file_map[path_marked_loaded] ||= LoadedFile.new(path)
-        file_map[path_marked_loaded].constants |= new_constants
-      end
+      associate_constants_to_file(new_constants, path) if new_constants.any?
 
       return result
+    end
+    
+    def associate_constants_to_file(constants, file_path)
+      path_marked_loaded = file_path.sub(/\.rb$/, '')
+      file_map[path_marked_loaded] ||= LoadedFile.new(file_path)
+      file_map[path_marked_loaded].constants |= constants
     end
     
     # Augmented `remove_constant'.
