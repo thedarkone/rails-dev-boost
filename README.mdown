@@ -18,6 +18,62 @@ It can also be used in combination with [RailsTestServing](https://github.com/Ro
 
     def config.soft_reload() true end if RailsTestServing.active?
 
+## FAQ
+
+### Q: How big of a boost is it going to give me?
+A: It depends on the size of your app (the bigger it is the bigger your boost is going to be). The speed is then approximately equal to that of production env. plus the time it takes to stat all your app's `*.rb` files (which is surprisingly fast as it is cached by OS).
+
+### Q: I'm using a different version of Rails other than 2.2, will this work for me?
+A: Unfortunately you are on your own right now :(. Only Rails-2.2 branch is supported. I'll be looking into support for Rails-2.3-edge in a few days.
+
+### Q: My `Article` model does not pick up changes from the `articles` table.
+A: You need to force it to be reloaded (just hit the save button in your editor for `article.rb` file).
+
+### Q: I used `require 'article'` and the `Article` model is not being reloaded.
+A: You really shouldn't be using `require` to load your files in the Rails app (if you want them to be automatically reloaded) and let automatic constant loading handle the require for you. You can also use `require_dependency 'article'`, as it goes through the Rails stack.
+
+### Q: I'm using class variables (by class variables I mean "metaclass instance variables") and they are not being reloaded.
+A: Class level instance variables are not thread safe and you shouldn't be really using them :). There is generally only one case where they might pose a problem for `rails-dev-boost`:
+    
+    #app/models/article.rb
+    class Article < ActiveRecord::Base
+    end
+    
+    #app/models/blog.rb
+    class Blog < ActiveRecord::Base
+      def self.all_articles
+        @all_articles ||= Article.all
+      end
+    end
+
+Modifying `article.rb` will not reload `@all_articles` (you would always need to re-save `blog.rb` as well).
+
+The solution is to move class instance variable to its class like this:
+
+    #app/models/article.rb
+    class Article < ActiveRecord::Base
+      def self.all_articles
+        @all_articles ||= all
+      end
+    end
+    
+    #app/models/blog.rb
+    class Blog < ActiveRecord::Base
+      def self.all_articles
+        Article.all_articles
+      end
+    end
+    
+This way saving `arcticle.rb` will trigger the reload of `@all_articles`.
+
+### Q: I'm using JRuby, it is going to work?
+A: I haven't tested the plugin with JRuby, but the plugin does use `ObjectSpace` to do its magic. `ObjectSpace` is AFAIK disabled by default on JRuby.
+
+### Q: I'm using [concerned_with](http://github.com/jakehow/concerned_with) and it broke down.
+A: Install [rails_dev_boost_concerned_with_fix](http://github.com/thedarkone/rails_dev_boost_concerned_with_fix) to fix this.
+
+FAQ added by [thedarkone](http://github.com/thedarkone).
+
 ## Credits
 
 Written by [Roman Le Négrate](http://roman.flucti.com) ([contact](mailto:roman.lenegrate@gmail.com)). Released under the MIT-license: see the `LICENSE` file.
