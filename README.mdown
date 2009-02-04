@@ -1,5 +1,7 @@
 # RailsDevelopmentBoost
 
+Make your Rails app 10 times faster in development mode (see FAQ below for more details).
+
 Alternative to Josh Goebel's [`rails_dev_mode_performance`](https://github.com/yyyc514/rails_dev_mode_performance) plugin.
 
 ## Background
@@ -20,11 +22,17 @@ It can also be used in combination with [RailsTestServing](https://github.com/Ro
 
 ## FAQ
 
-### Q: How big of a boost is it going to give me?
-A: It depends on the size of your app (the bigger it is the bigger your boost is going to be). The speed is then approximately equal to that of production env. plus the time it takes to stat all your app's `*.rb` files (which is surprisingly fast as it is cached by OS).
+### Q: Since the plugin uses its special "unloading mechanism" won't everything break down?
+A: Very unlikely... of course there are some edge cases where you might see some breakage (mainly if you're deviating from the Rails 1 file = 1 class conventions or doing some weird `require`s). This is a 99% solution and the seconds you're wasting waiting for the Rails to spit out a page in the dev mode do add up in the long run.
 
-### Q: I'm using a different version of Rails other than 2.2, will this work for me?
-A: Unfortunately you are on your own right now :(. Only Rails-2.2 branch is supported. I'll be looking into support for Rails-2.3-edge in a few days.
+### Q: How big of a boost is it going to give me?
+A: It depends on the size of your app (the bigger it is the bigger your boost is going to be). The speed is then approximately equal to that of production env. plus the time it takes to stat all your app's `*.rb` files (which is surprisingly fast as it is cached by OS). Empty 1 controller 2 views app will become about 4x times faster more complex apps will see huge improvements.
+
+### Q: I'm using an older version of Rails than 2.2, will this work for me?
+A: Unfortunately you are on your own right now :(.
+
+### Q: What about Rails 2.3?
+A: Checkout the `rails-2-3` branch of the plugin and you're good to go.
 
 ### Q: My `Article` model does not pick up changes from the `articles` table.
 A: You need to force it to be reloaded (just hit the save button in your editor for `article.rb` file).
