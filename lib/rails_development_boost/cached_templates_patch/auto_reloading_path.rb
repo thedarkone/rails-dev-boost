@@ -1,7 +1,6 @@
 module RailsDevelopmentBoost
   module CachedTemplatesPatch
     class AutoReloadingPath < ActionView::Template::Path
-      extend ActiveSupport::Memoizable
       
       def initialize(path)
         super
@@ -22,7 +21,7 @@ module RailsDevelopmentBoost
             self[path]
           end
         else
-          load_matching_templates(path)
+          load_all_templates_from_dir(templates_dir_from_path(path))
           @paths[path]
         end
       end
@@ -49,27 +48,20 @@ module RailsDevelopmentBoost
         end
       end
       
-      # find and register all potential templates
-      def load_matching_templates(path)
-        template_file_candidates_for(path).each {|template_file| register_template_from_file(template_file)}
+      # load all templates from the directory of the requested template
+      def load_all_templates_from_dir(dir)
+        # hit disk only once per template-dir/request
+        @disk_cache[dir] ||= template_files_from_dir(dir).each {|template_file| register_template_from_file(template_file)}
       end
       
-      # we need to be looking for all the potential template extensions, e.g. products/index should match products/index.html.erb etc.
-      def template_file_candidates_for(path)
-        hit_disk_for_matching_templates(glob_template_matcher_for(path))
+      def templates_dir_from_path(path)
+        File.join(@path, File.dirname(path))
       end
       
-      # @disk_cache is very useful for apps using inherit_views plugin
-      def hit_disk_for_matching_templates(template_match_str)
-        @disk_cache[template_match_str] ||= Dir.glob(template_match_str).reject {|file_or_dir| File.directory?(file_or_dir)}
+      # get all the template filenames from the dir
+      def template_files_from_dir(dir)
+        Dir.glob("#{dir}/*")
       end
-      
-      # search str for Dir.glob matching every possible combination of extension/locale/format
-      def glob_template_matcher_for(path)
-        basename_without_template_extensions, dir = File.basename(path)[/\A[^.]*/], File.dirname(path)
-        "#{File.join(@path, dir, basename_without_template_extensions)}*"
-      end
-      memoize :glob_template_matcher_for
       
     end    
   end
