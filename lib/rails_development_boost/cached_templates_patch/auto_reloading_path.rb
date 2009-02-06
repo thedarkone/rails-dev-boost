@@ -26,9 +26,10 @@ module RailsDevelopmentBoost
         end
       end
       
-      def register_template_from_file(template_file)
-        template_relative_path = template_file.split("#{@path}/").last
-        register_template(AutoReloadingTemplate.new(template_relative_path, self)) unless @paths[template_relative_path]
+      def register_template_from_file(template_file_path)
+        if !@paths[template_relative_path = template_file_path.split("#{@path}/").last] && File.file?(template_file_path)
+          register_template(AutoReloadingTemplate.new(template_relative_path, self))
+        end
       end
       
       def register_template(template)
