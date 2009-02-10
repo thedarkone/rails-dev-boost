@@ -25,7 +25,7 @@ module RailsDevelopmentBoost
     
     def unload_modified_files
       file_map.values.each do |file|
-        file.constants.each { |const| remove_constant(const) } if file.changed?
+        file.constants.dup.each { |const| remove_constant(const) } if file.changed?
       end
     end
     
