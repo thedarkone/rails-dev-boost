@@ -4,6 +4,13 @@ Make your Rails app 10 times faster in development mode (see FAQ below for more 
 
 Alternative to Josh Goebel's [`rails_dev_mode_performance`](https://github.com/yyyc514/rails_dev_mode_performance) plugin.
 
+## Branches
+
+If you are using **Rails 2.1** or **Rails 2.0** or **anything older**: you are out of luck.
+If you are using **Rails 2.2**: [`rails-dev-boost/master`](http://github.com/thedarkone/rails-dev-boost/tree/master) branch.
+If you are using **Rails 2.3-RC1**: [`rails-dev-boost/rails-2-3`](http://github.com/thedarkone/rails-dev-boost/tree/rails-2-3) branch.
+If you are using **Rails Edge**: you are out of luck, but will have faster dev mode templates, because that was merged into core.
+
 ## Background
 
 Why create a similar plugin? Because I couldn't get Josh Goebel's to work in my projects. His attempts to keep templates cached in a way that fails with recent versions of Rails. Also, removing the faulty chunk of code revealed another issue: it stats source files that may not exist, without trying to find their real path beforehand. That would be fixable is the code wasn't such a mess (no offense).
