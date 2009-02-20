@@ -7,9 +7,12 @@ Alternative to Josh Goebel's [`rails_dev_mode_performance`](https://github.com/y
 ## Branches
 
 If you are using **Rails 2.1** or **Rails 2.0** or **anything older**: you are out of luck.
+
 If you are using **Rails 2.2**: [`rails-dev-boost/master`](http://github.com/thedarkone/rails-dev-boost/tree/master) branch.
+
 If you are using **Rails 2.3-RC1**: [`rails-dev-boost/rails-2-3`](http://github.com/thedarkone/rails-dev-boost/tree/rails-2-3) branch.
-If you are using **Rails Edge**: you are out of luck, but will have faster dev mode templates, because that was merged into core.
+
+If you are using **Rails Edge**: [`rails-dev-boost/edge`](http://github.com/thedarkone/rails-dev-boost/tree/edge) branch.
 
 ## Background
 
@@ -37,9 +40,6 @@ A: It depends on the size of your app (the bigger it is the bigger your boost is
 
 ### Q: I'm using an older version of Rails than 2.2, will this work for me?
 A: Unfortunately you are on your own right now :(.
-
-### Q: What about Rails 2.3?
-A: Checkout the `rails-2-3` branch of the plugin and you're good to go.
 
 ### Q: My `Article` model does not pick up changes from the `articles` table.
 A: You need to force it to be reloaded (just hit the save button in your editor for `article.rb` file).
