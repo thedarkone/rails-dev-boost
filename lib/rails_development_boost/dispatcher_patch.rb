@@ -4,26 +4,19 @@ module RailsDevelopmentBoost
       patch = self
       require 'action_controller'
       require 'action_controller/dispatcher'
-      ActionController::Dispatcher.class_eval do
-        to_prepare { ActiveSupport::Dependencies.unload_modified_files }
-        remove_method :reload_application
+      ActionController::Dispatcher.to_prepare { ActiveSupport::Dependencies.unload_modified_files }
+      ActionController::Dispatcher.metaclass.class_eval do
+        remove_method :cleanup_application
         include patch
       end
     end
     
-    # Overridden.
-    def reload_application
+    # Overridden
+    def cleanup_application
       # Cleanup the application before processing the current request.
-      # ActiveRecord::Base.reset_subclasses if defined?(ActiveRecord)
-      # ActiveSupport::Dependencies.clear
-      ActiveSupport::Dependencies.remove_explicitely_unloadable_constants!
+      # ActiveRecord::Base.reset_subclasses if defined?(ActiveRecord) #removed
+      # ActiveSupport::Dependencies.clear #removed
       ActiveRecord::Base.clear_reloadable_connections! if defined?(ActiveRecord)
-
-      # Run prepare callbacks before every request in development mode
-      run_callbacks :prepare_dispatch
-
-      ActionController::Routing::Routes.reload
     end
-    
   end
 end
