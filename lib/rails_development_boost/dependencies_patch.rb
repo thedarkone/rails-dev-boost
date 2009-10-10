@@ -1,6 +1,9 @@
 module RailsDevelopmentBoost
   module DependenciesPatch
     def self.apply!
+      # retain the original method in case the application overwrites it on its modules/klasses
+      Module.send :alias_method, :_mod_name, :name
+      
       patch = self
       ActiveSupport::Dependencies.module_eval do
         remove_method :remove_unloadable_constants!
@@ -89,7 +92,7 @@ module RailsDevelopmentBoost
     
     def clear_tracks_of_removed_const(const_name)
       autoloaded_constants.delete(const_name)
-      module_cache.delete_if { |mod| mod.name == const_name }
+      module_cache.delete_if { |mod| mod._mod_name == const_name }
       file_map.dup.each do |path, file|
         file.constants.delete(const_name)
         if file.constants.empty?
@@ -104,8 +107,8 @@ module RailsDevelopmentBoost
         modules.dup.each do |other|
           next unless other < mod || other.metaclass.ancestors.include?(mod)
           next unless other.superclass == mod if Class === mod
-          next unless qualified_const_defined?(other.name) && other.name.constantize == other
-          remove_constant(other.name)
+          next unless qualified_const_defined?(other._mod_name) && other._mod_name.constantize == other
+          remove_constant(other._mod_name)
         end
       end
     end
@@ -136,7 +139,7 @@ module RailsDevelopmentBoost
     def fetch_module_cache
       return(yield(module_cache)) if module_cache.any?
       
-      ObjectSpace.each_object(Module) { |mod| module_cache << mod unless (mod.name || "").empty? }
+      ObjectSpace.each_object(Module) { |mod| module_cache << mod unless (mod._mod_name || "").empty? }
       begin
         yield module_cache
       ensure
