@@ -85,6 +85,11 @@ A: I haven't tested the plugin with JRuby, but the plugin does use `ObjectSpace`
 ### Q: I'm using [concerned_with](http://github.com/jakehow/concerned_with) and it broke down.
 A: Install [rails_dev_boost_concerned_with_fix](http://github.com/thedarkone/rails_dev_boost_concerned_with_fix) to fix this.
 
+### Q: I'm sometimes getting weird errors when using [inherited_resources](http://github.com/josevalim/inherited_resources).
+A: Put this into `config/initializers/inherited_boost_fix.rb`:
+
+    ActiveSupport::Dependencies.load_once_paths = ActiveSupport::Dependencies.load_once_paths.delete_if {|p| p =~ /inherited_resources/}
+
 FAQ added by [thedarkone](http://github.com/thedarkone).
 
 ## Credits
