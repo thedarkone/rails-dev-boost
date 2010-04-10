@@ -5,7 +5,7 @@ module RailsDevelopmentBoost
       require 'action_controller'
       require 'action_controller/dispatcher'
       ActionController::Dispatcher.to_prepare { ActiveSupport::Dependencies.unload_modified_files }
-      ActionController::Dispatcher.metaclass.class_eval do
+      ActionController::Dispatcher.singleton_class.class_eval do
         remove_method :cleanup_application
         include patch
       end
