@@ -55,8 +55,7 @@ module RailsDevelopmentBoost
     
     def associate_constants_to_file(constants, file_path)
       path_marked_loaded = file_path.sub(/\.rb$/, '')
-      file_map[path_marked_loaded] ||= LoadedFile.new(file_path)
-      file_map[path_marked_loaded].constants |= constants
+      (file_map[path_marked_loaded] ||= LoadedFile.new(file_path)).add_constants(constants)
     end
     
     # Augmented `remove_constant'.
@@ -86,6 +85,13 @@ module RailsDevelopmentBoost
       autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_constant(const) }
     end
     
+    def remove_dependent_constant(const_name)
+      if same_file_constants = LoadedFile.other_constants_from_the_same_files_as(const_name)
+        same_file_constants.each {|const_name| remove_constant(const_name)}
+      end
+      remove_constant(const_name)
+    end
+    
     def remove_explicit_dependencies_of(const_name)
       explicit_dependencies.delete(const_name).uniq.each {|depending_const| remove_constant(depending_const)} if explicit_dependencies[const_name]
     end
@@ -94,7 +100,7 @@ module RailsDevelopmentBoost
       autoloaded_constants.delete(const_name)
       module_cache.delete_if { |mod| mod._mod_name == const_name }
       file_map.dup.each do |path, file|
-        file.constants.delete(const_name)
+        file.delete_constant(const_name)
         if file.constants.empty?
           loaded.delete(path)
           file_map.delete(path)
@@ -108,7 +114,7 @@ module RailsDevelopmentBoost
           next unless other < mod || other.singleton_class.ancestors.include?(mod)
           next unless other.superclass == mod if Class === mod
           next unless qualified_const_defined?(other._mod_name) && other._mod_name.constantize == other
-          remove_constant(other._mod_name)
+          remove_dependent_constant(other._mod_name)
         end
       end
     end
