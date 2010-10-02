@@ -1,4 +1,6 @@
 if !$rails_rake_task && (Rails.env.development? || (config.respond_to?(:soft_reload) && config.soft_reload))
   require 'rails_development_boost'
-  RailsDevelopmentBoost.apply!
+  config.to_prepare do
+    RailsDevelopmentBoost.apply!
+  end
 end
