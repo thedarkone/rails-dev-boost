@@ -1,14 +1,19 @@
 module RailsDevelopmentBoost
-  def self.apply!
-    Object.class_eval do
-      alias_method :singleton_class, :metaclass unless respond_to?(:singleton_class)
-    end
-    
-    [DispatcherPatch, DependenciesPatch, ViewHelpersPatch].each &:apply!
+  ActiveSupport.on_load(:after_initialize) do
+    ReferencePatch.apply!
+    DependenciesPatch.apply!
+    DescendantsTrackerPatch.apply!
   end
-
-  autoload :DispatcherPatch,      'rails_development_boost/dispatcher_patch'
-  autoload :DependenciesPatch,    'rails_development_boost/dependencies_patch'
-  autoload :LoadedFile,           'rails_development_boost/loaded_file'
-  autoload :ViewHelpersPatch,     'rails_development_boost/view_helpers_patch'
+  
+  ActiveSupport.on_load(:action_controller) do
+    ActiveSupport.on_load(:after_initialize) do
+      ViewHelpersPatch.apply!
+      ActionDispatch::Callbacks.to_prepare { ActiveSupport::Dependencies.unload_modified_files! }
+    end
+  end
+  
+  autoload :DependenciesPatch,       'rails_development_boost/dependencies_patch'
+  autoload :LoadedFile,              'rails_development_boost/loaded_file'
+  autoload :ViewHelpersPatch,        'rails_development_boost/view_helpers_patch'
+  autoload :DescendantsTrackerPatch, 'rails_development_boost/descendants_tracker_patch'
 end

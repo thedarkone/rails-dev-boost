@@ -6,11 +6,12 @@ module RailsDevelopmentBoost
       
       patch = self
       ActiveSupport::Dependencies.module_eval do
-        remove_method :remove_unloadable_constants!
+        remove_possible_method :remove_unloadable_constants!
+        remove_possible_method :clear
         include patch
         alias_method_chain :load_file, 'constant_tracking'
         alias_method_chain :remove_constant, 'handling_of_connections'
-        extend self
+        extend patch
       end
     end
     
@@ -26,7 +27,8 @@ module RailsDevelopmentBoost
     mattr_accessor :explicit_dependencies
     self.explicit_dependencies = {}
     
-    def unload_modified_files
+    def unload_modified_files!
+      log_call
       file_map.values.each do |file|
         file.constants.dup.each { |const| remove_constant(const) } if file.changed?
       end
@@ -37,9 +39,7 @@ module RailsDevelopmentBoost
     end
     
     # Overridden.
-    def remove_unloadable_constants!
-      autoloaded_constants.dup.each { |const| remove_constant(const) }
-      remove_explicitely_unloadable_constants!
+    def clear
     end
     
     # Augmented `load_file'.
@@ -65,7 +65,7 @@ module RailsDevelopmentBoost
           object = const_name.constantize if qualified_const_defined?(const_name)
           handle_connected_constants(object, const_name) if object
           result = remove_constant_without_handling_of_connections(const_name)
-          clear_tracks_of_removed_const(const_name)
+          clear_tracks_of_removed_const(const_name, object)
           return result
         end
       end
@@ -96,9 +96,10 @@ module RailsDevelopmentBoost
       explicit_dependencies.delete(const_name).uniq.each {|depending_const| remove_constant(depending_const)} if explicit_dependencies[const_name]
     end
     
-    def clear_tracks_of_removed_const(const_name)
+    def clear_tracks_of_removed_const(const_name, object)
       autoloaded_constants.delete(const_name)
       module_cache.delete_if { |mod| mod._mod_name == const_name }
+      clean_up_references(const_name, object)
       file_map.dup.each do |path, file|
         file.delete_constant(const_name)
         if file.constants.empty?
@@ -106,6 +107,11 @@ module RailsDevelopmentBoost
           file_map.delete(path)
         end
       end
+    end
+    
+    def clean_up_references(const_name, object)
+      references[const_name].try(:loose)
+      ActiveSupport::DescendantsTracker.delete(object)
     end
     
     def remove_dependent_modules(mod)
@@ -133,11 +139,6 @@ module RailsDevelopmentBoost
           end
         end
       end
-
-      # Update ActiveRecord subclass tree
-      registry = ActiveRecord::Base.class_eval("@@subclasses")
-      registry.delete(klass)
-      (registry[klass.superclass] || []).delete(klass)
     end
   
   private

@@ -1,7 +1,7 @@
 module RailsDevelopmentBoost
   module ViewHelpersPatch
     def self.apply!
-      [ActionController, ActionMailer].each {|mod| mod::Helpers::ClassMethods.send(:include, self)}
+      AbstractController::Helpers::ClassMethods.send :include, self
     end
     
     # we need to explicitly associate helpers to their including controllers/mailers
