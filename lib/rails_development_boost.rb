@@ -13,7 +13,8 @@ module RailsDevelopmentBoost
   end
   
   autoload :DependenciesPatch,       'rails_development_boost/dependencies_patch'
-  autoload :LoadedFile,              'rails_development_boost/loaded_file'
-  autoload :ViewHelpersPatch,        'rails_development_boost/view_helpers_patch'
   autoload :DescendantsTrackerPatch, 'rails_development_boost/descendants_tracker_patch'
+  autoload :LoadedFile,              'rails_development_boost/loaded_file'
+  autoload :ReferencePatch,          'rails_development_boost/reference_patch'
+  autoload :ViewHelpersPatch,        'rails_development_boost/view_helpers_patch'
 end
