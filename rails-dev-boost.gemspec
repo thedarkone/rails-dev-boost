@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{rails-dev-boost}
-  s.version = "0.1.0"
+  s.version = "0.1.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Roman Le N\303\251grate", "thedarkone"]
-  s.date = %q{2010-08-21}
+  s.date = %q{2010-11-11}
   s.description = %q{Make your Rails app 10 times faster in development mode}
   s.email = %q{roman.lenegrate@gmail.com}
   s.extra_rdoc_files = [
@@ -26,9 +26,11 @@ Gem::Specification.new do |s|
      "init.rb",
      "lib/rails_development_boost.rb",
      "lib/rails_development_boost/dependencies_patch.rb",
-     "lib/rails_development_boost/dispatcher_patch.rb",
+     "lib/rails_development_boost/descendants_tracker_patch.rb",
      "lib/rails_development_boost/loaded_file.rb",
+     "lib/rails_development_boost/reference_patch.rb",
      "lib/rails_development_boost/view_helpers_patch.rb",
+     "rails-dev-boost.gemspec",
      "test/constants/.DS_Store",
      "test/constants/active_record/comment.rb",
      "test/constants/active_record/message.rb",
