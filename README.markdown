@@ -22,7 +22,21 @@ I needed better performance in development mode right away, so here is an altern
 
 ## Usage
 
-    script/plugin install git://github.com/thedarkone/rails-dev-boost
+### Rails 3
+
+Usage through `Gemfile`:
+
+    group :development do
+      gem 'rails-dev-boost', :git => 'git://github.com/thedarkone/rails-dev-boost.git', :require => 'rails_development_boost'
+    end
+
+Installing as a plugin:
+
+    script/rails plugin install git://github.com/thedarkone/rails-dev-boost
+
+### Rails 2.3 and older
+
+    script/plugin install git://github.com/thedarkone/rails-dev-boost -r rails-2-3
 
 When the server is started in *development* mode, the special unloading mechanism takes over.
 
