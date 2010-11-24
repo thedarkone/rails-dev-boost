@@ -132,7 +132,7 @@ module RailsDevelopmentBoost
 
       # Reset references held by macro reflections (klass is lazy loaded, so
       # setting its cache to nil will force the name to be resolved again).
-      ActiveRecord::Base.instance_eval { subclasses }.each do |model|
+      ActiveRecord::Base.descendants.each do |model|
         model.reflections.each_value do |reflection|
           reflection.instance_eval do
             @klass = nil if @klass == klass
