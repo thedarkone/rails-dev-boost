@@ -6,11 +6,13 @@ Alternative to Josh Goebel's [`rails_dev_mode_performance`](https://github.com/y
 
 ## Branches
 
-If you are using **Rails 2.1** or **Rails 2.0** or **anything older**: you are out of luck.
+If you are using **Rails 3**: [`rails-dev-boost/master`](http://github.com/thedarkone/rails-dev-boost/tree/master) branch.
+
+If you are using **Rails 2.3**: [`rails-dev-boost/rails-2-3`](http://github.com/thedarkone/rails-dev-boost/tree/rails-2-3) branch.
 
 If you are using **Rails 2.2**: [`rails-dev-boost/rails-2-2`](http://github.com/thedarkone/rails-dev-boost/tree/rails-2-2) branch.
 
-If you are using **Rails 2.3**: [`rails-dev-boost/master`](http://github.com/thedarkone/rails-dev-boost/tree/master) branch.
+If you are using **Rails 2.1** or **Rails 2.0** or **anything older**: you are out of luck.
 
 ## Background
 
