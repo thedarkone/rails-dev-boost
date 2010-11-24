@@ -62,8 +62,10 @@ module RailsDevelopmentBoost
     def remove_constant_with_handling_of_connections(const_name)
       fetch_module_cache do
         prevent_further_removal_of(const_name) do
-          object = const_name.constantize if qualified_const_defined?(const_name)
-          handle_connected_constants(object, const_name) if object
+          if qualified_const_defined?(const_name) && object = const_name.constantize
+            handle_connected_constants(object, const_name)
+            remove_same_file_constants(const_name)
+          end
           result = remove_constant_without_handling_of_connections(const_name)
           clear_tracks_of_removed_const(const_name, object)
           return result
@@ -85,11 +87,10 @@ module RailsDevelopmentBoost
       autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_constant(const) }
     end
     
-    def remove_dependent_constant(const_name)
+    def remove_same_file_constants(const_name)
       if same_file_constants = LoadedFile.other_constants_from_the_same_files_as(const_name)
         same_file_constants.each {|const_name| remove_constant(const_name)}
       end
-      remove_constant(const_name)
     end
     
     def remove_explicit_dependencies_of(const_name)
@@ -120,7 +121,7 @@ module RailsDevelopmentBoost
           next unless other < mod || other.singleton_class.ancestors.include?(mod)
           next unless other.superclass == mod if Class === mod
           next unless qualified_const_defined?(other._mod_name) && other._mod_name.constantize == other
-          remove_dependent_constant(other._mod_name)
+          remove_constant(other._mod_name)
         end
       end
     end
