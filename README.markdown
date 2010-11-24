@@ -22,7 +22,7 @@ I needed better performance in development mode right away, so here is an altern
 
 ## Usage
 
-    script/plugin install git://github.com/thedarkone/rails-dev-boost
+    script/plugin install git://github.com/thedarkone/rails-dev-boost -r rails-2-3
 
 When the server is started in *development* mode, the special unloading mechanism takes over.
 
