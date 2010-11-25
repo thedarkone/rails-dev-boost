@@ -54,8 +54,7 @@ module RailsDevelopmentBoost
     end
     
     def associate_constants_to_file(constants, file_path)
-      path_marked_loaded = file_path.sub(/\.rb$/, '')
-      (file_map[path_marked_loaded] ||= LoadedFile.new(file_path)).add_constants(constants)
+      (file_map[file_path] ||= LoadedFile.new(file_path)).add_constants(constants)
     end
     
     # Augmented `remove_constant'.
@@ -121,11 +120,13 @@ module RailsDevelopmentBoost
     def clear_tracks_of_removed_const(const_name)
       autoloaded_constants.delete(const_name)
       module_cache.delete_if { |mod| mod._mod_name == const_name }
-      file_map.dup.each do |path, file|
-        file.delete_constant(const_name)
-        if file.constants.empty?
-          loaded.delete(path)
-          file_map.delete(path)
+      if files = LoadedFile.constants_to_files[const_name]
+        files.dup.each do |file|
+          file.delete_constant(const_name)
+          if file.constants.empty?
+            loaded.delete(file.path.sub(/\.rb\Z/, ''))
+            file_map.delete(file.path)
+          end
         end
       end
     end
