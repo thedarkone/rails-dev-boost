@@ -65,6 +65,7 @@ module RailsDevelopmentBoost
           if qualified_const_defined?(const_name) && object = const_name.constantize
             handle_connected_constants(object, const_name)
             remove_same_file_constants(const_name)
+            remove_parent_modules_if_autoloaded(object) if object.kind_of?(Module)
           end
           result = remove_constant_without_handling_of_connections(const_name)
           clear_tracks_of_removed_const(const_name)
@@ -86,6 +87,26 @@ module RailsDevelopmentBoost
       update_activerecord_related_references(object)
       autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_constant(const) }
     end
+    
+    def autoloaded_namespace_object?(object) # faster than going through Dependencies.autoloaded?
+      LoadedFile.constants_to_files[object._mod_name]
+    end
+    
+    # AS::Dependencies doesn't track same-file nested constants, so we need to look out for them on our own.
+    # For example having loaded an abc.rb that looks like this:
+    #   class Abc; class Inner; end; end
+    # AS::Dependencies would only add "Abc" constant name to its autoloaded_constants list, completely ignoring Abc::Inner. This in turn
+    # can cause problems for classes inheriting from Abc::Inner somewhere else in the app.
+    def remove_parent_modules_if_autoloaded(object)
+      unless autoloaded_namespace_object?(object)
+        while (object = object.parent) != Object
+          if autoloaded_namespace_object?(object)
+            remove_constant(object._mod_name)
+            break
+          end
+        end
+      end
+    end    
     
     def remove_same_file_constants(const_name)
       if same_file_constants = LoadedFile.other_constants_from_the_same_files_as(const_name)
