@@ -167,7 +167,7 @@ module RailsDevelopmentBoost
     
     def clean_up_if_no_constants(file)
       if file.constants.empty?
-        loaded.delete(file.path.sub(/\.rb\Z/, ''))
+        loaded.delete(file.require_path)
         file_map.delete(file.path)
       end
     end
