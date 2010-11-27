@@ -42,6 +42,10 @@ module RailsDevelopmentBoost
       associated_files
     end
     
+    def require_path
+      @path.sub(/\.rb\Z/, '')
+    end
+    
     def self.each_file_with_const(const_name, &block)
       if files = constants_to_files[const_name]
         files.dup.each(&block)
