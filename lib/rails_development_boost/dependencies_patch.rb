@@ -58,12 +58,15 @@ module RailsDevelopmentBoost
     # Augmented `load_file'.
     def load_file_with_constant_tracking(path, *args, &block)
       result = now_loading(path) { load_file_without_constant_tracking(path, *args, &block) }
-      new_constants = autoloaded_constants - file_map.values.map(&:constants).flatten
       
-      # Associate newly loaded constants to the file just loaded
-      associate_constants_to_file(new_constants, path)
+      unless load_once_path?(path)
+        new_constants = autoloaded_constants - file_map.values.map(&:constants).flatten
+      
+        # Associate newly loaded constants to the file just loaded
+        associate_constants_to_file(new_constants, path)
+      end
 
-      return result
+      result
     end
     
     def now_loading(path)
