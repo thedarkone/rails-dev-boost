@@ -145,6 +145,14 @@ module RailsDevelopmentBoost
           end
         end
       end
+    end
+    
+    def in_autoloaded_namespace?(object)
+      while object != Object
+        return true if autoloaded_namespace_object?(object)
+        object = object.parent
+      end
+      false
     end    
     
     def remove_same_file_constants(const_name)
@@ -184,6 +192,7 @@ module RailsDevelopmentBoost
           next unless other < mod || other.singleton_class.ancestors.include?(mod)
           next unless other.superclass == mod if Class === mod
           next unless qualified_const_defined?(other._mod_name) && other._mod_name.constantize == other
+          next unless in_autoloaded_namespace?(other)
           remove_constant(other._mod_name)
         end
       end
