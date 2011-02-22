@@ -6,11 +6,13 @@ Alternative to Josh Goebel's [`rails_dev_mode_performance`](https://github.com/y
 
 ## Branches
 
-If you are using **Rails 2.1** or **Rails 2.0** or **anything older**: you are out of luck.
+If you are using **Rails 3**: [`rails-dev-boost/master`](http://github.com/thedarkone/rails-dev-boost/tree/master) branch.
+
+If you are using **Rails 2.3**: [`rails-dev-boost/rails-2-3`](http://github.com/thedarkone/rails-dev-boost/tree/rails-2-3) branch.
 
 If you are using **Rails 2.2**: [`rails-dev-boost/rails-2-2`](http://github.com/thedarkone/rails-dev-boost/tree/rails-2-2) branch.
 
-If you are using **Rails 2.3**: [`rails-dev-boost/master`](http://github.com/thedarkone/rails-dev-boost/tree/master) branch.
+If you are using **Rails 2.1** or **Rails 2.0** or **anything older**: you are out of luck.
 
 ## Background
 
@@ -20,7 +22,7 @@ I needed better performance in development mode right away, so here is an altern
 
 ## Usage
 
-    script/plugin install git://github.com/thedarkone/rails-dev-boost -r rails-2-2
+    script/plugin install git://github.com/thedarkone/rails-dev-boost -r rails-2-2-slow-templates
 
 When the server is started in *development* mode, the special unloading mechanism takes over.
 
@@ -82,8 +84,10 @@ This way saving `arcticle.rb` will trigger the reload of `@all_articles`.
 ### Q: I'm using JRuby, is it going to work?
 A: I haven't tested the plugin with JRuby, but the plugin does use `ObjectSpace` to do its magic. `ObjectSpace` is AFAIK disabled by default on JRuby.
 
-### Q: I'm using [concerned_with](http://github.com/jakehow/concerned_with) and it broke down.
-A: Install [rails_dev_boost_concerned_with_fix](http://github.com/thedarkone/rails_dev_boost_concerned_with_fix) to fix this.
+### Q: I'm sometimes getting weird errors when using [inherited_resources](http://github.com/josevalim/inherited_resources).
+A: Put this into `config/initializers/inherited_boost_fix.rb`:
+
+    ActiveSupport::Dependencies.load_once_paths = ActiveSupport::Dependencies.load_once_paths.delete_if {|p| p =~ /inherited_resources/}
 
 FAQ added by [thedarkone](http://github.com/thedarkone).
 

@@ -1,5 +1,9 @@
 module RailsDevelopmentBoost
   def self.apply!
+    Object.class_eval do
+      alias_method :singleton_class, :metaclass unless respond_to?(:singleton_class)
+    end
+
     [DispatcherPatch, DependenciesPatch, ViewHelpersPatch].each &:apply!
   end
 
