@@ -184,12 +184,17 @@ module RailsDevelopmentBoost
       fetch_module_cache do |modules|
         modules.dup.each do |other|
           next unless other < mod || other.singleton_class.ancestors.include?(mod)
-          next unless other.superclass == mod if Class === mod
+          next unless first_non_anonymous_superclass(other) == mod if Class === mod
           next unless qualified_const_defined?(other._mod_name) && other._mod_name.constantize == other
           next unless in_autoloaded_namespace?(other)
           remove_constant(other._mod_name)
         end
       end
+    end
+    
+    def first_non_anonymous_superclass(klass)
+      while (klass = klass.superclass) && anonymous?(klass); end
+      klass
     end
     
     # egrep -ohR '@\w*([ck]lass|refl|target|own)\w*' activerecord | sort | uniq
@@ -212,13 +217,17 @@ module RailsDevelopmentBoost
       registry.delete(klass)
       (registry[klass.superclass] || []).delete(klass)
     end
+    
+    def anonymous?(mod)
+      !(name = mod._mod_name) || name.empty?
+    end
   
   private
 
     def fetch_module_cache
       return(yield(module_cache)) if module_cache.any?
       
-      ObjectSpace.each_object(Module) { |mod| module_cache << mod unless (mod._mod_name || "").empty? }
+      ObjectSpace.each_object(Module) { |mod| module_cache << mod unless anonymous?(mod) }
       begin
         yield module_cache
       ensure
