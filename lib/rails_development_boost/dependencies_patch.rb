@@ -103,8 +103,9 @@ module RailsDevelopmentBoost
     def required_dependency(file_name)
       # Rails uses require_dependency for loading helpers, we are however dealing with the helper problem elsewhere, so we can skip them
       if @currently_loading && @currently_loading !~ /_controller(?:\.rb)?\Z/ && file_name !~ /_helper(?:\.rb)?\Z/
-        full_path = ActiveSupport::Dependencies.search_for_file(file_name)
-        loaded_file_for(@currently_loading).associate_with(loaded_file_for(full_path))
+        if full_path = ActiveSupport::Dependencies.search_for_file(file_name)
+          loaded_file_for(@currently_loading).associate_with(loaded_file_for(full_path))
+        end
       end
     end
     
@@ -145,6 +146,14 @@ module RailsDevelopmentBoost
           end
         end
       end
+    end
+    
+    def in_autoloaded_namespace?(object)
+      while object != Object
+        return true if autoloaded_namespace_object?(object)
+        object = object.parent
+      end
+      false
     end    
     
     def remove_same_file_constants(const_name)
@@ -152,7 +161,9 @@ module RailsDevelopmentBoost
     end
     
     def remove_explicit_dependencies_of(const_name)
-      explicit_dependencies.delete(const_name).uniq.each {|depending_const| remove_constant(depending_const)} if explicit_dependencies[const_name]
+      if dependencies = explicit_dependencies.delete(const_name)
+        dependencies.uniq.each {|depending_const| remove_constant(depending_const)} 
+      end
     end
     
     def clear_tracks_of_removed_const(const_name)
@@ -176,11 +187,17 @@ module RailsDevelopmentBoost
       fetch_module_cache do |modules|
         modules.dup.each do |other|
           next unless other < mod || other.singleton_class.ancestors.include?(mod)
-          next unless other.superclass == mod if Class === mod
+          next unless first_non_anonymous_superclass(other) == mod if Class === mod
           next unless qualified_const_defined?(other._mod_name) && other._mod_name.constantize == other
+          next unless in_autoloaded_namespace?(other)
           remove_constant(other._mod_name)
         end
       end
+    end
+    
+    def first_non_anonymous_superclass(klass)
+      while (klass = klass.superclass) && anonymous?(klass); end
+      klass
     end
     
     # egrep -ohR '@\w*([ck]lass|refl|target|own)\w*' activerecord | sort | uniq
@@ -203,13 +220,17 @@ module RailsDevelopmentBoost
       registry.delete(klass)
       (registry[klass.superclass] || []).delete(klass)
     end
+    
+    def anonymous?(mod)
+      !(name = mod._mod_name) || name.empty?
+    end
   
   private
 
     def fetch_module_cache
       return(yield(module_cache)) if module_cache.any?
       
-      ObjectSpace.each_object(Module) { |mod| module_cache << mod unless (mod._mod_name || "").empty? }
+      ObjectSpace.each_object(Module) { |mod| module_cache << mod unless anonymous?(mod) }
       begin
         yield module_cache
       ensure

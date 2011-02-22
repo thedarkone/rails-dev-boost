@@ -84,11 +84,6 @@ This way saving `arcticle.rb` will trigger the reload of `@all_articles`.
 ### Q: I'm using JRuby, is it going to work?
 A: I haven't tested the plugin with JRuby, but the plugin does use `ObjectSpace` to do its magic. `ObjectSpace` is AFAIK disabled by default on JRuby.
 
-### Q: I'm sometimes getting weird errors when using [inherited_resources](http://github.com/josevalim/inherited_resources).
-A: Put this into `config/initializers/inherited_boost_fix.rb`:
-
-    ActiveSupport::Dependencies.load_once_paths = ActiveSupport::Dependencies.load_once_paths.delete_if {|p| p =~ /inherited_resources/}
-
 FAQ added by [thedarkone](http://github.com/thedarkone).
 
 ## Credits
