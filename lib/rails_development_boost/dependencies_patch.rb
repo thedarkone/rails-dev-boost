@@ -72,6 +72,9 @@ module RailsDevelopmentBoost
     def now_loading(path)
       @currently_loading, old_currently_loading = path, @currently_loading
       yield
+    rescue
+      loaded_file_for(@currently_loading).stale!
+      raise
     ensure
       @currently_loading = old_currently_loading
     end
