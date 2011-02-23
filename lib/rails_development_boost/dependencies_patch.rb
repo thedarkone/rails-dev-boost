@@ -94,6 +94,10 @@ module RailsDevelopmentBoost
     end
     
     def associate_constants_to_file(constants, file_path)
+      # freezing strings before using them as Hash keys is slightly more memory efficient
+      constants.map!(&:freeze)
+      file_path.freeze
+      
       loaded_file_for(file_path).add_constants(constants)
     end
     
