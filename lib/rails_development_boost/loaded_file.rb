@@ -52,6 +52,13 @@ module RailsDevelopmentBoost
       end
     end
     
+    def stale!
+      @mtime = 0
+      if associated_files = retrieve_associated_files
+        associated_files.each(&:stale!)
+      end
+    end
+    
   private
     
     def delete_from_constants_to_files(const_name)
