@@ -185,7 +185,7 @@ module RailsDevelopmentBoost
     end
     
     def clean_up_references(const_name, object)
-      references[const_name].try(:loose)
+      ActiveSupport::Dependencies::Reference.loose!(const_name)
       ActiveSupport::DescendantsTracker.delete(object)
     end
     
