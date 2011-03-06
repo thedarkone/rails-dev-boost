@@ -95,14 +95,7 @@ module RailsDevelopmentBoost
     def remove_constant_with_handling_of_connections(const_name)
       fetch_module_cache do
         prevent_further_removal_of(const_name) do
-          if qualified_const_defined?(const_name) && object = const_name.constantize
-            handle_connected_constants(object, const_name)
-            remove_same_file_constants(const_name)
-            remove_parent_modules_if_autoloaded(object) if object.kind_of?(Module)
-          end
-          result = remove_constant_without_handling_of_connections(const_name)
-          clear_tracks_of_removed_const(const_name)
-          return result
+          unprotected_remove_constant(const_name)
         end
       end
     end
@@ -121,18 +114,37 @@ module RailsDevelopmentBoost
     end
     
   private
+    def unprotected_remove_constant(const_name)
+      if qualified_const_defined?(const_name) && object = const_name.constantize
+        handle_connected_constants(object, const_name)
+        remove_same_file_constants(const_name)
+        remove_parent_modules_if_autoloaded(object) if object.kind_of?(Module)
+      end
+      result = remove_constant_without_handling_of_connections(const_name)
+      clear_tracks_of_removed_const(const_name)
+      result
+    end
   
-    def unload_modified_file(file)
+    def unload_file(file)
       file.constants.dup.each {|const| remove_constant(const)}
       clean_up_if_no_constants(file)
     end
+    alias_method :unload_modified_file, :unload_file
     
     def handle_connected_constants(object, const_name)
       return unless Module === object && qualified_const_defined?(const_name)
       remove_explicit_dependencies_of(const_name)
       remove_dependent_modules(object)
       update_activerecord_related_references(object)
-      autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_constant(const) }
+      remove_nested_constants(const_name)
+    end
+    
+    def remove_nested_constants(const_name)
+      autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_nested_constant(const_name, const) }
+    end
+    
+    def remove_nested_constant(parent_const, child_const)
+      remove_constant(child_const)
     end
     
     def autoloaded_namespace_object?(object) # faster than going through Dependencies.autoloaded?
@@ -146,13 +158,19 @@ module RailsDevelopmentBoost
     # can cause problems for classes inheriting from Abc::Inner somewhere else in the app.
     def remove_parent_modules_if_autoloaded(object)
       unless autoloaded_namespace_object?(object)
+        initial_object = object
+        
         while (object = object.parent) != Object
           if autoloaded_namespace_object?(object)
-            remove_constant(object._mod_name)
+            remove_autoloaded_parent_module(initial_object, object)
             break
           end
         end
       end
+    end
+    
+    def remove_autoloaded_parent_module(initial_object, parent_object)
+      remove_constant(parent_object._mod_name)
     end
     
     def in_autoloaded_namespace?(object)
@@ -164,13 +182,21 @@ module RailsDevelopmentBoost
     end    
     
     def remove_same_file_constants(const_name)
-      LoadedFile.each_file_with_const(const_name) {|file| unload_modified_file(file)}
+      LoadedFile.each_file_with_const(const_name) {|file| unload_containing_file(const_name, file)}
+    end
+    
+    def unload_containing_file(const_name, file)
+      unload_file(file)
     end
     
     def remove_explicit_dependencies_of(const_name)
       if dependencies = explicit_dependencies.delete(const_name)
-        dependencies.uniq.each {|depending_const| remove_constant(depending_const)} 
+        dependencies.uniq.each {|depending_const| remove_explicit_dependency(const_name, depending_const)}
       end
+    end
+    
+    def remove_explicit_dependency(const_name, depending_const)
+      remove_constant(depending_const)
     end
     
     def clear_tracks_of_removed_const(const_name)
@@ -197,9 +223,13 @@ module RailsDevelopmentBoost
           next unless first_non_anonymous_superclass(other) == mod if Class === mod
           next unless qualified_const_defined?(other._mod_name) && other._mod_name.constantize == other
           next unless in_autoloaded_namespace?(other)
-          remove_constant(other._mod_name)
+          remove_dependent_constant(mod, other)
         end
       end
+    end
+    
+    def remove_dependent_constant(original_module, dependent_module)
+      remove_constant(dependent_module._mod_name)
     end
     
     def first_non_anonymous_superclass(klass)
