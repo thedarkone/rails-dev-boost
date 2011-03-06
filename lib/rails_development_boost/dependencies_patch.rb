@@ -25,8 +25,20 @@ module RailsDevelopmentBoost
         include LoadablePatch
         alias_method_chain :require_dependency, 'constant_tracking'
       end
+
+      InstrumentationPatch.apply! if @do_instrument
+    end
+  
+    def self.debug!
+      if ActiveSupport::Dependencies < DependenciesPatch
+        InstrumentationPatch.apply!
+      else
+        @do_instrument = true
+      end
     end
     
+    autoload :InstrumentationPatch, 'rails_development_boost/dependencies_patch/instrumentation_patch'
+  
     mattr_accessor :module_cache
     self.module_cache = []
     
