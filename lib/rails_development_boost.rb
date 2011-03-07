@@ -8,7 +8,12 @@ module RailsDevelopmentBoost
   ActiveSupport.on_load(:action_controller) do
     ActiveSupport.on_load(:after_initialize) do
       ViewHelpersPatch.apply!
-      ActionDispatch::Callbacks.to_prepare { ActiveSupport::Dependencies.unload_modified_files! }
+      
+      if defined?(ActionDispatch::Reloader) # post 0f7c970
+        ActionDispatch::Reloader.to_prepare { ActiveSupport::Dependencies.unload_modified_files! }
+      else
+        ActionDispatch::Callbacks.before    { ActiveSupport::Dependencies.unload_modified_files! }
+      end
     end
   end
   
