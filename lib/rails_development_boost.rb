@@ -3,17 +3,18 @@ module RailsDevelopmentBoost
     ReferencePatch.apply!
     DependenciesPatch.apply!
     DescendantsTrackerPatch.apply!
+    
+    # this should go into ActiveSupport.on_load(:action_pack), alas Rails doesn't provide it
+    if defined?(ActionDispatch::Reloader) # post 0f7c970
+      ActionDispatch::Reloader.to_prepare { ActiveSupport::Dependencies.unload_modified_files! }
+    else
+      ActionDispatch::Callbacks.before    { ActiveSupport::Dependencies.unload_modified_files! }
+    end
   end
   
   ActiveSupport.on_load(:action_controller) do
     ActiveSupport.on_load(:after_initialize) do
       ViewHelpersPatch.apply!
-      
-      if defined?(ActionDispatch::Reloader) # post 0f7c970
-        ActionDispatch::Reloader.to_prepare { ActiveSupport::Dependencies.unload_modified_files! }
-      else
-        ActionDispatch::Callbacks.before    { ActiveSupport::Dependencies.unload_modified_files! }
-      end
     end
   end
   
