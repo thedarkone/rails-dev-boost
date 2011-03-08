@@ -52,6 +52,13 @@ module RailsDevelopmentBoost
       end
     end
     
+    def stale!
+      @mtime = 0
+      if associated_files = retrieve_associated_files
+        associated_files.each(&:stale!)
+      end
+    end
+    
   private
     
     def delete_from_constants_to_files(const_name)
@@ -62,7 +69,8 @@ module RailsDevelopmentBoost
     end
     
     def current_mtime
-      File.file?(@path) ? File.mtime(@path) : nil
+      # trying to be more efficient: there is no need for a full-fledged Time instance, just grab the timestamp
+      File.mtime(@path).to_i rescue nil
     end
   end
 end

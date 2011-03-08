@@ -11,4 +11,8 @@ module RailsDevelopmentBoost
   autoload :DependenciesPatch,    'rails_development_boost/dependencies_patch'
   autoload :LoadedFile,           'rails_development_boost/loaded_file'
   autoload :ViewHelpersPatch,     'rails_development_boost/view_helpers_patch'
+  
+  def self.debug!
+    DependenciesPatch.debug!
+  end
 end
