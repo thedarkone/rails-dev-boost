@@ -12,4 +12,8 @@ module RailsDevelopmentBoost
   autoload :LoadedFile,           'rails_development_boost/loaded_file'
   autoload :ViewHelpersPatch,     'rails_development_boost/view_helpers_patch'
   autoload :CachedTemplatesPatch, 'rails_development_boost/cached_templates_patch'
+  
+  def self.debug!
+    DependenciesPatch.debug!
+  end
 end
