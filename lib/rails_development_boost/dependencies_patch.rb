@@ -86,9 +86,8 @@ module RailsDevelopmentBoost
     def now_loading(path)
       @currently_loading, old_currently_loading = path, @currently_loading
       yield
-    rescue
-      loaded_file_for(@currently_loading).stale!
-      raise
+    rescue Exception => e
+      error_loading_file(@currently_loading, e)
     ensure
       @currently_loading = old_currently_loading
     end
@@ -150,6 +149,11 @@ module RailsDevelopmentBoost
       clean_up_if_no_constants(file)
     end
     alias_method :unload_modified_file, :unload_file
+    
+    def error_loading_file(file_path, e)
+      loaded_file_for(file_path).stale!
+      raise e
+    end
     
     def handle_connected_constants(object, const_name)
       return unless Module === object && qualified_const_defined?(const_name)
