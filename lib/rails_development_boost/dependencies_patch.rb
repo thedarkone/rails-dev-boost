@@ -160,7 +160,7 @@ module RailsDevelopmentBoost
     end
     
     def remove_nested_constants(const_name)
-      autoloaded_constants.grep(/^#{const_name}::[^:]+$/).each { |const| remove_nested_constant(const_name, const) }
+      autoloaded_constants.grep(/\A#{const_name}::/).each { |const| remove_nested_constant(const_name, const) }
     end
     
     def remove_nested_constant(parent_const, child_const)
