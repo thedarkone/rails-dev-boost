@@ -63,6 +63,11 @@ module RailsDevelopmentBoost
         @removal_nesting -= 1
       end
       
+      def error_loading_file(file_path, e)
+        boost_log('ERROR_WHILE_LOADING', "#{loaded_file_for(file_path).boost_inspect}: #{e.inspect}")
+        super
+      end
+      
       def unload_modified_file(file)
         boost_log('CHANGED', "#{file.boost_inspect}")
         super
