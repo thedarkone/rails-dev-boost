@@ -3,8 +3,21 @@ module RailsDevelopmentBoost
     extend self
     
     def self.apply!
-      Observable.send :include, self
-      Observable.alias_method_chain :add_observer, :unloading
+      patch = self
+      
+      if non_ruby_lib_implementation?
+        ActiveModel::Observing::ClassMethods # post c2ca73c9 compatibility
+      else
+        require 'observer'
+        Observable
+      end.class_eval do
+        include patch
+        alias_method_chain :add_observer, :unloading
+      end
+    end
+    
+    def self.non_ruby_lib_implementation?
+      defined?(ActiveModel::Observing::ClassMethods) && ActiveModel::Observing::ClassMethods.public_instance_methods(false).map(&:to_s).include?('add_observer')
     end
     
     def add_observer_with_unloading(observer)
