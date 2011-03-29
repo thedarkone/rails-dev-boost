@@ -137,7 +137,10 @@ module RailsDevelopmentBoost
       if qualified_const_defined?(const_name) && object = const_name.constantize
         handle_connected_constants(object, const_name)
         remove_same_file_constants(const_name)
-        remove_parent_modules_if_autoloaded(object) if object.kind_of?(Module)
+        if object.kind_of?(Module)
+          remove_parent_modules_if_autoloaded(object)
+          remove_child_module_constants(object)
+        end
       end
       result = remove_constant_without_handling_of_connections(const_name)
       clear_tracks_of_removed_const(const_name, object)
@@ -195,6 +198,20 @@ module RailsDevelopmentBoost
     
     def remove_autoloaded_parent_module(initial_object, parent_object)
       remove_constant(parent_object._mod_name)
+    end
+    
+    # AS::Dependencies doesn't track same-file nested constants, so we need to look out for them on our own and remove any dependent modules/constants
+    def remove_child_module_constants(object)
+      object.constants.each do |const_name|
+        # we only care about "namespace" constants (classes/modules)
+        if uninherited_const_defined?(object, const_name) && (child_const = object.const_get(const_name)).kind_of?(Module)
+          remove_child_module_constant(object, child_const)
+        end
+      end
+    end
+    
+    def remove_child_module_constant(parent_object, child_constant)
+      remove_constant(child_constant._mod_name)
     end
     
     def in_autoloaded_namespace?(object)

@@ -93,6 +93,11 @@ module RailsDevelopmentBoost
         super
       end
       
+      def remove_child_module_constant(parent_object, child_constant)
+        boost_log('REMOVE_CHILD', "#{parent_object._mod_name} -> #{child_constant._mod_name}")
+        super
+      end
+      
       def remove_nested_constant(parent_const, child_const)
         boost_log('REMOVE_NESTED', "#{parent_const} :: #{child_const.sub(/\A#{parent_const}::/, '')}")
         super
