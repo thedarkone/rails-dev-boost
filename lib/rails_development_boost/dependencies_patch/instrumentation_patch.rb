@@ -69,9 +69,15 @@ module RailsDevelopmentBoost
       end
       
       def self.apply!
-        ActiveSupport::Dependencies.extend self
-        RailsDevelopmentBoost::LoadedFile.send :include, LoadedFile
-        RailsDevelopmentBoost::LoadedFile::Files.send :include, Files
+        unless applied?
+          ActiveSupport::Dependencies.extend self
+          RailsDevelopmentBoost::LoadedFile.send :include, LoadedFile
+          RailsDevelopmentBoost::LoadedFile::Files.send :include, Files
+        end
+      end
+      
+      def self.applied?
+        ActiveSupport::Dependencies.include?(self)
       end
       
       def unload_modified_files!
