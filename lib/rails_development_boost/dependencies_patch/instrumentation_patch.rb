@@ -1,13 +1,35 @@
 module RailsDevelopmentBoost
   module DependenciesPatch
     module InstrumentationPatch
+      module Instrumenter
+        delegate :boost_log, :to => 'ActiveSupport::Dependencies'
+        
+        def self.included(mod)
+          mod.extend(ClassMethods)
+        end
+        
+        module ClassMethods
+          def included(klass)
+            (public_instance_methods(false) + private_instance_methods(false) + protected_instance_methods(false)).each do |method|
+              if m = method.to_s.match(/(.+)_with_(.+)/)
+                klass.alias_method_chain m[1], m[2]
+              end
+            end
+
+            super
+          end
+        end
+      end
+      
       module LoadedFile
+        include Instrumenter
+        
         def boost_inspect
           "\#<LoadedFile #{relative_path} #{inspect_constants(@constants)}>"
         end
         
         def add_constants_with_instrumentation(new_constants)
-          ActiveSupport::Dependencies.boost_log('ADD_CONSTANTS', "#{boost_inspect} <- #{inspect_constants(new_constants)}")
+          boost_log('ADD_CONSTANTS', "#{boost_inspect} <- #{inspect_constants(new_constants)}")
           add_constants_without_instrumentation(new_constants)
         end
 
@@ -22,14 +44,34 @@ module RailsDevelopmentBoost
           @path.sub(RAILS_ROOT, '')
         end
         
-        def self.included(base)
-          base.alias_method_chain :add_constants, :instrumentation
+        def self.included(klass)
+          klass.singleton_class.send :include, ClassMethods
+          super
+        end
+        
+        module ClassMethods
+          include Instrumenter
+          
+          def unload_containing_file_with_instrumentation(const_name, file)
+            boost_log('UNLOAD_CONTAINING_FILE', "#{const_name} -> #{file.boost_inspect}")
+            unload_containing_file_without_instrumentation(const_name, file)
+          end
+        end
+      end
+      
+      module Files
+        include Instrumenter
+        
+        def unload_modified_file_with_instrumentation(file)
+          boost_log('CHANGED', "#{file.boost_inspect}")
+          unload_modified_file_without_instrumentation(file)
         end
       end
       
       def self.apply!
         ActiveSupport::Dependencies.extend self
         RailsDevelopmentBoost::LoadedFile.send :include, LoadedFile
+        RailsDevelopmentBoost::LoadedFile::Files.send :include, Files
       end
       
       def unload_modified_files
@@ -64,17 +106,7 @@ module RailsDevelopmentBoost
       end
       
       def error_loading_file(file_path, e)
-        boost_log('ERROR_WHILE_LOADING', "#{loaded_file_for(file_path).boost_inspect}: #{e.inspect}")
-        super
-      end
-      
-      def unload_modified_file(file)
-        boost_log('CHANGED', "#{file.boost_inspect}")
-        super
-      end
-      
-      def unload_containing_file(const_name, file)
-        boost_log('UNLOAD_CONTAINING_FILE', "#{const_name} -> #{file.boost_inspect}")
+        boost_log('ERROR_WHILE_LOADING', "#{RailsDevelopmentBoost::LoadedFile.for(file_path).boost_inspect}: #{e.inspect}")
         super
       end
       
