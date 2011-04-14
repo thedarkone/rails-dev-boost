@@ -15,6 +15,7 @@ module RailsDevelopmentBoost
       patch = self
       ActiveSupport::Dependencies.module_eval do
         remove_method :remove_unloadable_constants!
+        alias_method :local_const_defined?, :uninherited_const_defined? unless method_defined?(:local_const_defined?) # pre 4da45060 compatibility
         include patch
         alias_method_chain :load_file, 'constant_tracking'
         alias_method_chain :remove_constant, 'handling_of_connections'
@@ -204,7 +205,7 @@ module RailsDevelopmentBoost
     def remove_child_module_constants(object)
       object.constants.each do |const_name|
         # we only care about "namespace" constants (classes/modules)
-        if uninherited_const_defined?(object, const_name) && (child_const = object.const_get(const_name)).kind_of?(Module)
+        if local_const_defined?(object, const_name) && (child_const = object.const_get(const_name)).kind_of?(Module)
           remove_child_module_constant(object, child_const)
         end
       end
