@@ -45,9 +45,6 @@ module RailsDevelopmentBoost
     mattr_accessor :module_cache
     self.module_cache = []
     
-    mattr_accessor :file_map
-    self.file_map = {}
-    
     mattr_accessor :constants_being_removed
     self.constants_being_removed = []
     
@@ -55,9 +52,8 @@ module RailsDevelopmentBoost
     self.explicit_dependencies = {}
     
     def unload_modified_files
-      file_map.values.each do |file|
-        unload_modified_file(file) if file.changed?
-      end
+      log_call
+      LoadedFile.unload_modified!
     end
     
     def remove_explicitely_unloadable_constants!
@@ -75,7 +71,7 @@ module RailsDevelopmentBoost
       result = now_loading(path) { load_file_without_constant_tracking(path, *args, &block) }
       
       unless load_once_path?(path)
-        new_constants = autoloaded_constants - file_map.values.map(&:constants).flatten
+        new_constants = autoloaded_constants - LoadedFile.loaded_constants
       
         # Associate newly loaded constants to the file just loaded
         associate_constants_to_file(new_constants, path)
@@ -98,11 +94,7 @@ module RailsDevelopmentBoost
       constants.map!(&:freeze)
       file_path.freeze
       
-      loaded_file_for(file_path).add_constants(constants)
-    end
-    
-    def loaded_file_for(file_path)
-      file_map[file_path] ||= LoadedFile.new(file_path)
+      LoadedFile.for(file_path).add_constants(constants)
     end
     
     # Augmented `remove_constant'.
@@ -118,7 +110,7 @@ module RailsDevelopmentBoost
       # Rails uses require_dependency for loading helpers, we are however dealing with the helper problem elsewhere, so we can skip them
       if @currently_loading && @currently_loading !~ /_controller(?:\.rb)?\Z/ && file_name !~ /_helper(?:\.rb)?\Z/
         if full_path = ActiveSupport::Dependencies.search_for_file(file_name)
-          loaded_file_for(@currently_loading).associate_with(loaded_file_for(full_path))
+          LoadedFile.relate_files(@currently_loading, full_path)
         end
       end
     end
@@ -137,7 +129,7 @@ module RailsDevelopmentBoost
     def unprotected_remove_constant(const_name)
       if qualified_const_defined?(const_name) && object = const_name.constantize
         handle_connected_constants(object, const_name)
-        remove_same_file_constants(const_name)
+        LoadedFile.unload_files_with_const!(const_name)
         if object.kind_of?(Module)
           remove_parent_modules_if_autoloaded(object)
           remove_child_module_constants(object)
@@ -148,14 +140,8 @@ module RailsDevelopmentBoost
       result
     end
   
-    def unload_file(file)
-      file.constants.dup.each {|const| remove_constant(const)}
-      clean_up_if_no_constants(file)
-    end
-    alias_method :unload_modified_file, :unload_file
-    
     def error_loading_file(file_path, e)
-      loaded_file_for(file_path).stale!
+      LoadedFile.for(file_path).stale!
       raise e
     end
     
@@ -176,7 +162,7 @@ module RailsDevelopmentBoost
     end
     
     def autoloaded_namespace_object?(object) # faster than going through Dependencies.autoloaded?
-      LoadedFile.constants_to_files[object._mod_name]
+      LoadedFile.loaded_constant?(object._mod_name)
     end
     
     # AS::Dependencies doesn't track same-file nested constants, so we need to look out for them on our own.
@@ -223,14 +209,6 @@ module RailsDevelopmentBoost
       false
     end    
     
-    def remove_same_file_constants(const_name)
-      LoadedFile.each_file_with_const(const_name) {|file| unload_containing_file(const_name, file)}
-    end
-    
-    def unload_containing_file(const_name, file)
-      unload_file(file)
-    end
-    
     def remove_explicit_dependencies_of(const_name)
       if dependencies = explicit_dependencies.delete(const_name)
         dependencies.uniq.each {|depending_const| remove_explicit_dependency(const_name, depending_const)}
@@ -244,18 +222,7 @@ module RailsDevelopmentBoost
     def clear_tracks_of_removed_const(const_name)
       autoloaded_constants.delete(const_name)
       module_cache.delete_if { |mod| mod._mod_name == const_name }
-      
-      LoadedFile.each_file_with_const(const_name) do |file|
-        file.delete_constant(const_name)
-        clean_up_if_no_constants(file)
-      end
-    end
-    
-    def clean_up_if_no_constants(file)
-      if file.constants.empty?
-        loaded.delete(file.require_path)
-        file_map.delete(file.path)
-      end
+      LoadedFile.const_unloaded(const_name)
     end
     
     def remove_dependent_modules(mod)
