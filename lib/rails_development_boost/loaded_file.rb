@@ -18,6 +18,10 @@ module RailsDevelopmentBoost
       def constants
         values.map(&:constants).flatten
       end
+      
+      def stored?(file)
+        key?(file.path) && self[file.path] == file
+      end
     end
     
     class ConstantsToFiles < Hash
@@ -63,17 +67,20 @@ module RailsDevelopmentBoost
     
     def unload!
       @constants.dup.each {|const| ActiveSupport::Dependencies.remove_constant(const)}
+      clean_up_if_necessary
     end
     
     def delete_constant(const_name)
       CONSTANTS_TO_FILES.deassociate(const_name, self)
       @constants.delete(const_name)
-      clean_up if @constants.empty?
+      clean_up_if_necessary
     end
     
-    def clean_up
-      ActiveSupport::Dependencies.loaded.delete(require_path)
-      LOADED.delete(@path)
+    def clean_up_if_necessary
+      if @constants.empty? && LOADED.stored?(self)
+        LOADED.delete(@path)
+        ActiveSupport::Dependencies.loaded.delete(require_path)
+      end
     end
     
     def associate_with(other_loaded_file)
