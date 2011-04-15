@@ -291,8 +291,6 @@ module RailsDevelopmentBoost
       end
     end
     
-  private
-
     def fetch_module_cache
       return(yield(@module_cache)) if @module_cache
       
