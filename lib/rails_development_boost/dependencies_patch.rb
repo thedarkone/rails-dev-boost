@@ -76,7 +76,7 @@ module RailsDevelopmentBoost
       
       def in_autoloaded_namespace?(object)
         while object != Object
-          return true if autoloaded_namespace_object?(object)
+          return true if autoloaded_object?(object)
           object = object.parent
         end
         false
@@ -90,8 +90,8 @@ module RailsDevelopmentBoost
         ActiveSupport::Dependencies.qualified_const_defined?(const_name)
       end
       
-      def autoloaded_namespace_object?(object)
-        ActiveSupport::Dependencies.autoloaded_namespace_object?(object)
+      def autoloaded_object?(object)
+        ActiveSupport::Dependencies.autoloaded_object?(object)
       end
     end
     
@@ -167,7 +167,7 @@ module RailsDevelopmentBoost
       end
     end
     
-    def autoloaded_namespace_object?(object) # faster than going through Dependencies.autoloaded?
+    def autoloaded_object?(object) # faster than going through Dependencies.autoloaded?
       LoadedFile.loaded_constant?(object._mod_name)
     end
     
@@ -213,11 +213,11 @@ module RailsDevelopmentBoost
     # AS::Dependencies would only add "Abc" constant name to its autoloaded_constants list, completely ignoring Abc::Inner. This in turn
     # can cause problems for classes inheriting from Abc::Inner somewhere else in the app.
     def remove_parent_modules_if_autoloaded(object)
-      unless autoloaded_namespace_object?(object)
+      unless autoloaded_object?(object)
         initial_object = object
         
         while (object = object.parent) != Object
-          if autoloaded_namespace_object?(object)
+          if autoloaded_object?(object)
             remove_autoloaded_parent_module(initial_object, object)
             break
           end
