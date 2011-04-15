@@ -53,6 +53,7 @@ module RailsDevelopmentBoost
       def initialize
         @classes, @modules = [], []
         ObjectSpace.each_object(Module) { |mod| self << mod unless anonymous?(mod) }
+        @singleton_ancestors = Hash.new {|h, klass| h[klass] = klass.singleton_class.ancestors}
       end
       
       def each_dependent_on(mod)
@@ -80,7 +81,7 @@ module RailsDevelopmentBoost
         else
           [@classes, @modules].each do |collection|
             collection.dup.each do |other|
-              yield other if other < mod_or_class || other.singleton_class.ancestors.include?(mod_or_class)
+              yield other if other < mod_or_class || @singleton_ancestors[other].include?(mod_or_class)
             end
           end
         end
