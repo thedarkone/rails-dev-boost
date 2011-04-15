@@ -48,26 +48,43 @@ module RailsDevelopmentBoost
     mattr_accessor :explicit_dependencies
     self.explicit_dependencies = {}
     
-    class ModuleCache < Array
+    class ModuleCache
       def initialize
+        @classes, @modules = [], []
         ObjectSpace.each_object(Module) { |mod| self << mod unless anonymous?(mod) }
       end
       
       def each_dependent_on(mod)
-        dup.each do |other|
-          next unless other < mod || other.singleton_class.ancestors.include?(mod)
-          next unless first_non_anonymous_superclass(other) == mod if Class === mod
-          next unless qualified_const_defined?(other._mod_name) && other._mod_name.constantize == other
-          next unless in_autoloaded_namespace?(other)
-          yield other
+        each_inheriting_from(mod) do |other|
+          mod_name = other._mod_name
+          yield other if qualified_const_defined?(mod_name) && mod_name.constantize == other && in_autoloaded_namespace?(other)
         end
       end
       
       def remove_with_const_name(const_name)
-        delete_if { |mod| mod._mod_name == const_name }
+        @classes.delete_if { |mod| mod._mod_name == const_name }
+        @modules.delete_if { |mod| mod._mod_name == const_name }
+      end
+      
+      def <<(mod)
+        (Class === mod ? @classes : @modules) << mod
       end
       
       private
+      def each_inheriting_from(mod_or_class)
+        if Class === mod_or_class
+          @classes.dup.each do |other_class|
+            yield other_class if other_class < mod_or_class && first_non_anonymous_superclass(other_class) == mod_or_class
+          end
+        else
+          [@classes, @modules].each do |collection|
+            collection.dup.each do |other|
+              yield other if other < mod_or_class || other.singleton_class.ancestors.include?(mod_or_class)
+            end
+          end
+        end
+      end
+      
       def first_non_anonymous_superclass(klass)
         while (klass = klass.superclass) && anonymous?(klass); end
         klass
