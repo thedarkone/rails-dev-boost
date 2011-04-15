@@ -62,9 +62,12 @@ module RailsDevelopmentBoost
         end
       end
       
-      def remove_with_const_name(const_name)
-        @classes.delete_if { |mod| mod._mod_name == const_name }
-        @modules.delete_if { |mod| mod._mod_name == const_name }
+      def remove_const(const_name, object)
+        if object && Class === object
+          remove_const_from_colletion(@classes, const_name, object)
+        else
+          [@classes, @modules].each {|collection| remove_const_from_colletion(collection, const_name, object)}
+        end
       end
       
       def <<(mod)
@@ -72,6 +75,14 @@ module RailsDevelopmentBoost
       end
       
       private
+      def remove_const_from_colletion(collection, const_name, object)
+        if object
+          collection.delete(object)
+        else
+          collection.delete_if {|mod| mod._mod_name == const_name}
+        end
+      end
+      
       def each_inheriting_from(mod_or_class)
         if Class === mod_or_class
           @classes.dup.each do |other_class|
@@ -203,7 +214,7 @@ module RailsDevelopmentBoost
         end
       end
       result = remove_constant_without_handling_of_connections(const_name)
-      clear_tracks_of_removed_const(const_name)
+      clear_tracks_of_removed_const(const_name, object)
       result
     end
   
@@ -278,9 +289,9 @@ module RailsDevelopmentBoost
       remove_constant(depending_const)
     end
     
-    def clear_tracks_of_removed_const(const_name)
+    def clear_tracks_of_removed_const(const_name, object = nil)
       autoloaded_constants.delete(const_name)
-      @module_cache.remove_with_const_name(const_name)
+      @module_cache.remove_const(const_name, object)
       LoadedFile.const_unloaded(const_name)
     end
     
