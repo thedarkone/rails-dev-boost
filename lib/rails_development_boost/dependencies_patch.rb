@@ -192,7 +192,9 @@ module RailsDevelopmentBoost
     
     def handle_already_autoloaded_constants! # we might be late to the party and other gems/plugins might have already triggered autoloading of some constants
       loaded.each do |require_path|
-        associate_constants_to_file(autoloaded_constants, "#{require_path}.rb") # slightly heavy-handed..
+        unless load_once_path?(require_path)
+          associate_constants_to_file(autoloaded_constants, "#{require_path}.rb") # slightly heavy-handed..
+        end
       end
     end
     
