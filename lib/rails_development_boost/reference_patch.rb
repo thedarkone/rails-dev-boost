@@ -1,3 +1,5 @@
+require 'active_support/dependencies'
+
 module RailsDevelopmentBoost
   module ReferencePatch
     if defined?(ActiveSupport::Dependencies::ClassCache) # post Rails' f345e2380cac2560f3bb
