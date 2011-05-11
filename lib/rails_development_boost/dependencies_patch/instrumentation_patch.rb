@@ -93,8 +93,8 @@ module RailsDevelopmentBoost
         super
       end
       
-      def remove_child_module_constant(parent_object, child_constant)
-        boost_log('REMOVE_CHILD', "#{parent_object._mod_name} -> #{child_constant._mod_name}")
+      def remove_child_module_constant(parent_object, full_child_const_name)
+        boost_log('REMOVE_CHILD', "#{parent_object._mod_name} -> #{full_child_const_name}")
         super
       end
       
