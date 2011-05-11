@@ -45,6 +45,7 @@ module RailsDevelopmentBoost
     
     LOADED             = Files.new
     CONSTANTS_TO_FILES = ConstantsToFiles.new
+    NOW_UNLOADING      = Set.new
     
     attr_accessor :path, :constants
   
@@ -66,8 +67,21 @@ module RailsDevelopmentBoost
     end
     
     def unload!
-      @constants.dup.each {|const| ActiveSupport::Dependencies.remove_constant(const)}
-      clean_up_if_necessary
+      guard_double_unloading do
+        @constants.dup.each {|const| ActiveSupport::Dependencies.remove_constant(const)}
+        clean_up_if_necessary
+      end
+    end
+    
+    def guard_double_unloading
+      unless NOW_UNLOADING.include?(self)
+        NOW_UNLOADING << self
+        begin
+          yield
+        ensure
+          NOW_UNLOADING.delete(self)
+        end
+      end
     end
     
     def delete_constant(const_name)
