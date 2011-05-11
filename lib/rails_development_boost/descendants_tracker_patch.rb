@@ -1,3 +1,5 @@
+require 'active_support/descendants_tracker'
+
 module RailsDevelopmentBoost
   module DescendantsTrackerPatch
     def self.apply!

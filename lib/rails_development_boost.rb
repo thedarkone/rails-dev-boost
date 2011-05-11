@@ -1,21 +1,36 @@
 module RailsDevelopmentBoost
-  ActiveSupport.on_load(:after_initialize) do
-    ReferencePatch.apply!
-    DependenciesPatch.apply!
-    DescendantsTrackerPatch.apply!
-    ObservablePatch.apply!
+  class Railtie < ::Rails::Railtie
+    config.dev_boost = RailsDevelopmentBoost
     
-    # this should go into ActiveSupport.on_load(:action_pack), alas Rails doesn't provide it
-    if defined?(ActionDispatch::Reloader) # post 0f7c970
-      ActionDispatch::Reloader.to_prepare { ActiveSupport::Dependencies.unload_modified_files! }
-    else
-      ActionDispatch::Callbacks.before    { ActiveSupport::Dependencies.unload_modified_files! }
+    config.after_initialize do
+      if boost_enabled?
+        # this should go into ActiveSupport.on_load(:action_pack), alas Rails doesn't provide it
+        if defined?(ActionDispatch::Reloader) # post 0f7c970
+          ActionDispatch::Reloader.to_prepare { ActiveSupport::Dependencies.unload_modified_files! }
+        else
+          ActionDispatch::Callbacks.before    { ActiveSupport::Dependencies.unload_modified_files! }
+        end
+      end
     end
-  end
-  
-  ActiveSupport.on_load(:action_controller) do
-    ActiveSupport.on_load(:after_initialize) do
-      ViewHelpersPatch.apply!
+    
+    def self.boost_enabled?
+      !$rails_rake_task && (Rails.env.development? || (config.respond_to?(:soft_reload) && config.soft_reload))
+    end
+    
+    def boost_enabled?
+      self.class.boost_enabled?
+    end
+    
+    initializer 'dev_boost.setup', :after => :load_active_support do |app|
+      if boost_enabled?
+        [DependenciesPatch, ReferencePatch, DescendantsTrackerPatch, ObservablePatch].each(&:apply!)
+        
+        if defined?(AbstractController::Helpers)
+          ViewHelpersPatch.apply!
+        else
+          ActiveSupport.on_load(:action_controller) { ViewHelpersPatch.apply! }
+        end
+      end
     end
   end
   

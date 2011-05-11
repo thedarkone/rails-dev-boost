@@ -1,3 +1,5 @@
+require 'active_support/dependencies'
+
 module RailsDevelopmentBoost
   module DependenciesPatch
     module LoadablePatch
