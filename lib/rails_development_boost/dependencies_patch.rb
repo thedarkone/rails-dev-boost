@@ -127,6 +127,7 @@ module RailsDevelopmentBoost
     def unload_modified_files
       log_call
       LoadedFile.unload_modified!
+      @module_cache = nil
     end
     
     def remove_explicitely_unloadable_constants!
@@ -172,10 +173,9 @@ module RailsDevelopmentBoost
     
     # Augmented `remove_constant'.
     def remove_constant_with_handling_of_connections(const_name)
-      fetch_module_cache do
-        prevent_further_removal_of(const_name) do
-          unprotected_remove_constant(const_name)
-        end
+      module_cache # make sure module_cache has been created
+      prevent_further_removal_of(const_name) do
+        unprotected_remove_constant(const_name)
       end
     end
     
@@ -297,9 +297,7 @@ module RailsDevelopmentBoost
     end
     
     def remove_dependent_modules(mod)
-      fetch_module_cache do |cache|
-        cache.each_dependent_on(mod) {|other| remove_dependent_constant(mod, other)}
-      end
+      module_cache.each_dependent_on(mod) {|other| remove_dependent_constant(mod, other)}
     end
     
     def remove_dependent_constant(original_module, dependent_module)
@@ -327,14 +325,8 @@ module RailsDevelopmentBoost
       (registry[klass.superclass] || []).delete(klass)
     end
     
-    def fetch_module_cache
-      return(yield(@module_cache)) if @module_cache
-      
-      begin
-        yield(@module_cache = ModuleCache.new)
-      ensure
-        @module_cache = nil
-      end
+    def module_cache
+      @module_cache ||= ModuleCache.new
     end
 
     def prevent_further_removal_of(const_name)
