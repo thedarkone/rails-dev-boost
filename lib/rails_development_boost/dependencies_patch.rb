@@ -210,7 +210,7 @@ module RailsDevelopmentBoost
         LoadedFile.unload_files_with_const!(const_name)
         if object.kind_of?(Module)
           remove_parent_modules_if_autoloaded(object)
-          remove_child_module_constants(object)
+          remove_child_module_constants(object, const_name)
         end
       end
       result = remove_constant_without_handling_of_connections(const_name)
@@ -262,17 +262,21 @@ module RailsDevelopmentBoost
     end
     
     # AS::Dependencies doesn't track same-file nested constants, so we need to look out for them on our own and remove any dependent modules/constants
-    def remove_child_module_constants(object)
-      object.constants.each do |const_name|
+    def remove_child_module_constants(object, object_const_name)
+      object.constants.each do |child_const_name|
         # we only care about "namespace" constants (classes/modules)
-        if local_const_defined?(object, const_name) && (child_const = object.const_get(const_name)).kind_of?(Module)
-          remove_child_module_constant(object, child_const)
+        if local_const_defined?(object, child_const_name) && (child_const = object.const_get(child_const_name)).kind_of?(Module)
+          # make sure this is not "const alias" created like this: module Y; end; module A; X = Y; end, const A::X is not a proper "namespacing module",
+          # but only an alias to Y module
+          if (full_child_const_name = child_const._mod_name) == "#{object_const_name}::#{child_const_name}"
+            remove_child_module_constant(object, full_child_const_name)
+          end
         end
       end
     end
     
-    def remove_child_module_constant(parent_object, child_constant)
-      remove_constant(child_constant._mod_name)
+    def remove_child_module_constant(parent_object, full_child_const_name)
+      remove_constant(full_child_const_name)
     end
     
     def remove_explicit_dependencies_of(const_name)
