@@ -51,14 +51,14 @@ module RailsDevelopmentBoost
     class ModuleCache
       def initialize
         @classes, @modules = [], []
-        ObjectSpace.each_object(Module) { |mod| self << mod unless anonymous?(mod) }
+        ObjectSpace.each_object(Module) {|mod| self << mod if relevant?(mod)}
         @singleton_ancestors = Hash.new {|h, klass| h[klass] = klass.singleton_class.ancestors}
       end
       
       def each_dependent_on(mod)
         each_inheriting_from(mod) do |other|
           mod_name = other._mod_name
-          yield other if qualified_const_defined?(mod_name) && mod_name.constantize == other && in_autoloaded_namespace?(other)
+          yield other if qualified_const_defined?(mod_name) && mod_name.constantize == other
         end
       end
       
@@ -75,6 +75,11 @@ module RailsDevelopmentBoost
       end
       
       private
+      def relevant?(mod)
+        const_name = mod._mod_name
+        !anonymous_const_name?(const_name) && in_autoloaded_namespace?(const_name)
+      end
+      
       def remove_const_from_colletion(collection, const_name, object)
         if object
           collection.delete(object)
@@ -98,28 +103,24 @@ module RailsDevelopmentBoost
       end
       
       def first_non_anonymous_superclass(klass)
-        while (klass = klass.superclass) && anonymous?(klass); end
+        while (klass = klass.superclass) && anonymous_const_name?(klass._mod_name); end
         klass
       end
       
-      def in_autoloaded_namespace?(object)
-        while object != Object
-          return true if autoloaded_object?(object)
-          object = object.parent
-        end
+      NOTHING = ''
+      def in_autoloaded_namespace?(const_name) # careful, modifies passed in const_name!
+        begin
+          return true if LoadedFile.loaded_constant?(const_name)
+        end while const_name.sub!(/::[^:]+\Z/, NOTHING)
         false
       end
       
-      def anonymous?(mod)
-        !(name = mod._mod_name) || name.empty?
+      def anonymous_const_name?(const_name)
+        !const_name || const_name.empty?
       end
       
       def qualified_const_defined?(const_name)
         ActiveSupport::Dependencies.qualified_const_defined?(const_name)
-      end
-      
-      def autoloaded_object?(object)
-        ActiveSupport::Dependencies.autoloaded_object?(object)
       end
     end
     
@@ -199,10 +200,6 @@ module RailsDevelopmentBoost
       end
     end
     
-    def autoloaded_object?(object) # faster than going through Dependencies.autoloaded?
-      LoadedFile.loaded_constant?(object._mod_name)
-    end
-    
   private
     def unprotected_remove_constant(const_name)
       if qualified_const_defined?(const_name) && object = const_name.constantize
@@ -259,6 +256,10 @@ module RailsDevelopmentBoost
     
     def remove_autoloaded_parent_module(initial_object, parent_object)
       remove_constant(parent_object._mod_name)
+    end
+    
+    def autoloaded_object?(object) # faster than going through Dependencies.autoloaded?
+      LoadedFile.loaded_constant?(object._mod_name)
     end
     
     # AS::Dependencies doesn't track same-file nested constants, so we need to look out for them on our own and remove any dependent modules/constants
