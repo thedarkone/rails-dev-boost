@@ -107,7 +107,7 @@ module RailsDevelopmentBoost
     end
     
     def require_path
-      @path.sub(/\.rb\Z/, '')
+      File.expand_path(@path.sub(/\.rb\Z/, '')) # be sure to do the same thing as Dependencies#require_or_load and use the expanded path
     end
     
     def stale!
