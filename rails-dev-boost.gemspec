@@ -12,96 +12,14 @@ Gem::Specification.new do |s|
   s.date = %q{2010-11-11}
   s.description = %q{Make your Rails app 10 times faster in development mode}
   s.email = %q{roman.lenegrate@gmail.com}
-  s.extra_rdoc_files = [
-    "LICENSE",
-     "README.markdown"
-  ]
-  s.files = [
-    ".gitignore",
-     "LICENSE",
-     "README.markdown",
-     "Rakefile",
-     "TODO.txt",
-     "VERSION",
-     "init.rb",
-     "lib/rails_development_boost.rb",
-     "lib/rails_development_boost/dependencies_patch.rb",
-     "lib/rails_development_boost/descendants_tracker_patch.rb",
-     "lib/rails_development_boost/loaded_file.rb",
-     "lib/rails_development_boost/reference_patch.rb",
-     "lib/rails_development_boost/view_helpers_patch.rb",
-     "rails-dev-boost.gemspec",
-     "test/constants/.DS_Store",
-     "test/constants/active_record/comment.rb",
-     "test/constants/active_record/message.rb",
-     "test/constants/active_record/other.rb",
-     "test/constants/active_record/post.rb",
-     "test/constants/deep_nesting/a.rb",
-     "test/constants/deep_nesting/a/b.rb",
-     "test/constants/deep_nesting/a/b/c.rb",
-     "test/constants/deep_nesting/a/b/c/d.rb",
-     "test/constants/double_removal/ns.rb",
-     "test/constants/double_removal/ns/c.rb",
-     "test/constants/double_removal/ns/m.rb",
-     "test/constants/mixins/client.rb",
-     "test/constants/mixins/mixin.rb",
-     "test/constants/mixins/update/mixin.rb",
-     "test/constants/nested_mixins/b.rb",
-     "test/constants/nested_mixins/b/c.rb",
-     "test/constants/nested_mixins/ma.rb",
-     "test/constants/nested_mixins/ma/mb.rb",
-     "test/constants/nested_mixins/ma/mb/mc.rb",
-     "test/constants/nested_mixins/oa.rb",
-     "test/constants/nested_mixins/oa/ob.rb",
-     "test/constants/nested_mixins/oa/ob/oc.rb",
-     "test/constants/single_removal/a.rb",
-     "test/constants/single_removal/b.rb",
-     "test/constants/singleton_mixins/a.rb",
-     "test/constants/singleton_mixins/b.rb",
-     "test/constants/subclass/a.rb",
-     "test/constants/subclass/b.rb",
-     "test/constants/subclass/c.rb",
-     "test/rails_development_boost_test.rb",
-     "test/stub_environment.rb"
-  ]
+  s.extra_rdoc_files = ['LICENSE', 'README.markdown']
+  s.files = Dir.glob('{lib,test}/**/*') + ['LICENSE', 'README.markdown', 'VERSION']
   s.homepage = %q{http://github.com/thedarkone/rails-dev-boost}
   s.rdoc_options = ["--charset=UTF-8"]
   s.require_paths = ["lib"]
   s.rubygems_version = %q{1.3.7}
   s.summary = %q{Speeds up Rails development mode}
-  s.test_files = [
-    "test/constants/active_record/comment.rb",
-     "test/constants/active_record/message.rb",
-     "test/constants/active_record/other.rb",
-     "test/constants/active_record/post.rb",
-     "test/constants/deep_nesting/a/b/c/d.rb",
-     "test/constants/deep_nesting/a/b/c.rb",
-     "test/constants/deep_nesting/a/b.rb",
-     "test/constants/deep_nesting/a.rb",
-     "test/constants/double_removal/ns/c.rb",
-     "test/constants/double_removal/ns/m.rb",
-     "test/constants/double_removal/ns.rb",
-     "test/constants/mixins/client.rb",
-     "test/constants/mixins/mixin.rb",
-     "test/constants/mixins/update/mixin.rb",
-     "test/constants/nested_mixins/b/c.rb",
-     "test/constants/nested_mixins/b.rb",
-     "test/constants/nested_mixins/ma/mb/mc.rb",
-     "test/constants/nested_mixins/ma/mb.rb",
-     "test/constants/nested_mixins/ma.rb",
-     "test/constants/nested_mixins/oa/ob/oc.rb",
-     "test/constants/nested_mixins/oa/ob.rb",
-     "test/constants/nested_mixins/oa.rb",
-     "test/constants/single_removal/a.rb",
-     "test/constants/single_removal/b.rb",
-     "test/constants/singleton_mixins/a.rb",
-     "test/constants/singleton_mixins/b.rb",
-     "test/constants/subclass/a.rb",
-     "test/constants/subclass/b.rb",
-     "test/constants/subclass/c.rb",
-     "test/rails_development_boost_test.rb",
-     "test/stub_environment.rb"
-  ]
+  s.test_files = Dir.glob('test/**/*')
 
   if s.respond_to? :specification_version then
     current_version = Gem::Specification::CURRENT_SPECIFICATION_VERSION
