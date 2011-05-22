@@ -42,22 +42,92 @@ module RailsDevelopmentBoost
     
     autoload :InstrumentationPatch, 'rails_development_boost/dependencies_patch/instrumentation_patch'
   
-    mattr_accessor :module_cache
-    self.module_cache = []
-    
-    mattr_accessor :file_map
-    self.file_map = {}
-    
     mattr_accessor :constants_being_removed
     self.constants_being_removed = []
     
     mattr_accessor :explicit_dependencies
     self.explicit_dependencies = {}
     
-    def unload_modified_files
-      file_map.values.each do |file|
-        unload_modified_file(file) if file.changed?
+    class ModuleCache
+      def initialize
+        @classes, @modules = [], []
+        ObjectSpace.each_object(Module) {|mod| self << mod if relevant?(mod)}
+        @singleton_ancestors = Hash.new {|h, klass| h[klass] = klass.singleton_class.ancestors}
       end
+      
+      def each_dependent_on(mod)
+        each_inheriting_from(mod) do |other|
+          mod_name = other._mod_name
+          yield other if qualified_const_defined?(mod_name) && mod_name.constantize == other
+        end
+      end
+      
+      def remove_const(const_name, object)
+        if object && Class === object
+          remove_const_from_colletion(@classes, const_name, object)
+        else
+          [@classes, @modules].each {|collection| remove_const_from_colletion(collection, const_name, object)}
+        end
+      end
+      
+      def <<(mod)
+        (Class === mod ? @classes : @modules) << mod
+      end
+      
+      private
+      def relevant?(mod)
+        const_name = mod._mod_name
+        !anonymous_const_name?(const_name) && in_autoloaded_namespace?(const_name)
+      end
+      
+      def remove_const_from_colletion(collection, const_name, object)
+        if object
+          collection.delete(object)
+        else
+          collection.delete_if {|mod| mod._mod_name == const_name}
+        end
+      end
+      
+      def each_inheriting_from(mod_or_class)
+        if Class === mod_or_class
+          @classes.dup.each do |other_class|
+            yield other_class if other_class < mod_or_class && first_non_anonymous_superclass(other_class) == mod_or_class
+          end
+        else
+          [@classes, @modules].each do |collection|
+            collection.dup.each do |other|
+              yield other if other < mod_or_class || @singleton_ancestors[other].include?(mod_or_class)
+            end
+          end
+        end
+      end
+      
+      def first_non_anonymous_superclass(klass)
+        while (klass = klass.superclass) && anonymous_const_name?(klass._mod_name); end
+        klass
+      end
+      
+      NOTHING = ''
+      def in_autoloaded_namespace?(const_name) # careful, modifies passed in const_name!
+        begin
+          return true if LoadedFile.loaded_constant?(const_name)
+        end while const_name.sub!(/::[^:]+\Z/, NOTHING)
+        false
+      end
+      
+      def anonymous_const_name?(const_name)
+        !const_name || const_name.empty?
+      end
+      
+      def qualified_const_defined?(const_name)
+        ActiveSupport::Dependencies.qualified_const_defined?(const_name)
+      end
+    end
+    
+    def unload_modified_files
+      log_call
+      LoadedFile.unload_modified!
+      @module_cache = nil
     end
     
     def remove_explicitely_unloadable_constants!
@@ -75,7 +145,7 @@ module RailsDevelopmentBoost
       result = now_loading(path) { load_file_without_constant_tracking(path, *args, &block) }
       
       unless load_once_path?(path)
-        new_constants = autoloaded_constants - file_map.values.map(&:constants).flatten
+        new_constants = autoloaded_constants - LoadedFile.loaded_constants
       
         # Associate newly loaded constants to the file just loaded
         associate_constants_to_file(new_constants, path)
@@ -98,19 +168,14 @@ module RailsDevelopmentBoost
       constants.map!(&:freeze)
       file_path.freeze
       
-      loaded_file_for(file_path).add_constants(constants)
-    end
-    
-    def loaded_file_for(file_path)
-      file_map[file_path] ||= LoadedFile.new(file_path)
+      LoadedFile.for(file_path).add_constants(constants)
     end
     
     # Augmented `remove_constant'.
     def remove_constant_with_handling_of_connections(const_name)
-      fetch_module_cache do
-        prevent_further_removal_of(const_name) do
-          unprotected_remove_constant(const_name)
-        end
+      module_cache # make sure module_cache has been created
+      prevent_further_removal_of(const_name) do
+        unprotected_remove_constant(const_name)
       end
     end
     
@@ -118,7 +183,7 @@ module RailsDevelopmentBoost
       # Rails uses require_dependency for loading helpers, we are however dealing with the helper problem elsewhere, so we can skip them
       if @currently_loading && @currently_loading !~ /_controller(?:\.rb)?\Z/ && file_name !~ /_helper(?:\.rb)?\Z/
         if full_path = ActiveSupport::Dependencies.search_for_file(file_name)
-          loaded_file_for(@currently_loading).associate_with(loaded_file_for(full_path))
+          LoadedFile.relate_files(@currently_loading, full_path)
         end
       end
     end
@@ -139,25 +204,19 @@ module RailsDevelopmentBoost
     def unprotected_remove_constant(const_name)
       if qualified_const_defined?(const_name) && object = const_name.constantize
         handle_connected_constants(object, const_name)
-        remove_same_file_constants(const_name)
+        LoadedFile.unload_files_with_const!(const_name)
         if object.kind_of?(Module)
           remove_parent_modules_if_autoloaded(object)
           remove_child_module_constants(object, const_name)
         end
       end
       result = remove_constant_without_handling_of_connections(const_name)
-      clear_tracks_of_removed_const(const_name)
+      clear_tracks_of_removed_const(const_name, object)
       result
     end
   
-    def unload_file(file)
-      file.constants.dup.each {|const| remove_constant(const)}
-      clean_up_if_no_constants(file)
-    end
-    alias_method :unload_modified_file, :unload_file
-    
     def error_loading_file(file_path, e)
-      loaded_file_for(file_path).stale!
+      LoadedFile.for(file_path).stale!
       raise e
     end
     
@@ -170,15 +229,11 @@ module RailsDevelopmentBoost
     end
     
     def remove_nested_constants(const_name)
-      autoloaded_constants.grep(/\A#{const_name}::/).each { |const| remove_nested_constant(const_name, const) }
+      autoloaded_constants.grep(/\A#{const_name}::/) { |const| remove_nested_constant(const_name, const) }
     end
     
     def remove_nested_constant(parent_const, child_const)
       remove_constant(child_const)
-    end
-    
-    def autoloaded_namespace_object?(object) # faster than going through Dependencies.autoloaded?
-      LoadedFile.constants_to_files[object._mod_name]
     end
     
     # AS::Dependencies doesn't track same-file nested constants, so we need to look out for them on our own.
@@ -187,11 +242,11 @@ module RailsDevelopmentBoost
     # AS::Dependencies would only add "Abc" constant name to its autoloaded_constants list, completely ignoring Abc::Inner. This in turn
     # can cause problems for classes inheriting from Abc::Inner somewhere else in the app.
     def remove_parent_modules_if_autoloaded(object)
-      unless autoloaded_namespace_object?(object)
+      unless autoloaded_object?(object)
         initial_object = object
         
         while (object = object.parent) != Object
-          if autoloaded_namespace_object?(object)
+          if autoloaded_object?(object)
             remove_autoloaded_parent_module(initial_object, object)
             break
           end
@@ -201,6 +256,10 @@ module RailsDevelopmentBoost
     
     def remove_autoloaded_parent_module(initial_object, parent_object)
       remove_constant(parent_object._mod_name)
+    end
+    
+    def autoloaded_object?(object) # faster than going through Dependencies.autoloaded?
+      LoadedFile.loaded_constant?(object._mod_name)
     end
     
     # AS::Dependencies doesn't track same-file nested constants, so we need to look out for them on our own and remove any dependent modules/constants
@@ -221,22 +280,6 @@ module RailsDevelopmentBoost
       remove_constant(full_child_const_name)
     end
     
-    def in_autoloaded_namespace?(object)
-      while object != Object
-        return true if autoloaded_namespace_object?(object)
-        object = object.parent
-      end
-      false
-    end    
-    
-    def remove_same_file_constants(const_name)
-      LoadedFile.each_file_with_const(const_name) {|file| unload_containing_file(const_name, file)}
-    end
-    
-    def unload_containing_file(const_name, file)
-      unload_file(file)
-    end
-    
     def remove_explicit_dependencies_of(const_name)
       if dependencies = explicit_dependencies.delete(const_name)
         dependencies.uniq.each {|depending_const| remove_explicit_dependency(const_name, depending_const)}
@@ -247,42 +290,18 @@ module RailsDevelopmentBoost
       remove_constant(depending_const)
     end
     
-    def clear_tracks_of_removed_const(const_name)
+    def clear_tracks_of_removed_const(const_name, object = nil)
       autoloaded_constants.delete(const_name)
-      module_cache.delete_if { |mod| mod._mod_name == const_name }
-      
-      LoadedFile.each_file_with_const(const_name) do |file|
-        file.delete_constant(const_name)
-        clean_up_if_no_constants(file)
-      end
-    end
-    
-    def clean_up_if_no_constants(file)
-      if file.constants.empty?
-        loaded.delete(file.require_path)
-        file_map.delete(file.path)
-      end
+      @module_cache.remove_const(const_name, object)
+      LoadedFile.const_unloaded(const_name)
     end
     
     def remove_dependent_modules(mod)
-      fetch_module_cache do |modules|
-        modules.dup.each do |other|
-          next unless other < mod || other.singleton_class.ancestors.include?(mod)
-          next unless first_non_anonymous_superclass(other) == mod if Class === mod
-          next unless qualified_const_defined?(other._mod_name) && other._mod_name.constantize == other
-          next unless in_autoloaded_namespace?(other)
-          remove_dependent_constant(mod, other)
-        end
-      end
+      module_cache.each_dependent_on(mod) {|other| remove_dependent_constant(mod, other)}
     end
     
     def remove_dependent_constant(original_module, dependent_module)
       remove_constant(dependent_module._mod_name)
-    end
-    
-    def first_non_anonymous_superclass(klass)
-      while (klass = klass.superclass) && anonymous?(klass); end
-      klass
     end
     
     # egrep -ohR '@\w*([ck]lass|refl|target|own)\w*' activerecord | sort | uniq
@@ -306,21 +325,8 @@ module RailsDevelopmentBoost
       (registry[klass.superclass] || []).delete(klass)
     end
     
-    def anonymous?(mod)
-      !(name = mod._mod_name) || name.empty?
-    end
-  
-  private
-
-    def fetch_module_cache
-      return(yield(module_cache)) if module_cache.any?
-      
-      ObjectSpace.each_object(Module) { |mod| module_cache << mod unless anonymous?(mod) }
-      begin
-        yield module_cache
-      ensure
-        module_cache.clear
-      end
+    def module_cache
+      @module_cache ||= ModuleCache.new
     end
 
     def prevent_further_removal_of(const_name)
