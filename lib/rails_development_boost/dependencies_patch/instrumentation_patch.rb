@@ -32,6 +32,11 @@ module RailsDevelopmentBoost
           boost_log('ADD_CONSTANTS', "#{boost_inspect} <- #{inspect_constants(new_constants)}")
           add_constants_without_instrumentation(new_constants)
         end
+        
+        def unload_dependent_file_with_instrumentation(dependent_file)
+          boost_log('UNLOAD_DEPENDENT', "#{boost_inspect}: #{dependent_file.boost_inspect}")
+          unload_dependent_file_without_instrumentation(dependent_file)
+        end
 
       private
         RAILS_ROOT = /\A#{Rails.root.to_s}/
