@@ -17,4 +17,10 @@ module RailsDevelopmentBoost
   def self.debug!
     DependenciesPatch.debug!
   end
+  
+  def self.init!
+    if !$rails_rake_task && (Rails.env.development? || (config.respond_to?(:soft_reload) && config.soft_reload))
+      RailsDevelopmentBoost.apply!
+    end
+  end
 end
