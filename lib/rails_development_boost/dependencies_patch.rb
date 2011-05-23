@@ -9,6 +9,8 @@ module RailsDevelopmentBoost
     end
     
     def self.apply!
+      return if applied?
+      
       # retain the original method in case the application overwrites it on its modules/klasses
       Module.send :alias_method, :_mod_name, :name
       
@@ -33,11 +35,15 @@ module RailsDevelopmentBoost
     end
   
     def self.debug!
-      if ActiveSupport::Dependencies < DependenciesPatch
+      if applied?
         InstrumentationPatch.apply!
       else
         @do_instrument = true
       end
+    end
+    
+    def self.applied?
+      ActiveSupport::Dependencies < self
     end
     
     autoload :InstrumentationPatch, 'rails_development_boost/dependencies_patch/instrumentation_patch'
