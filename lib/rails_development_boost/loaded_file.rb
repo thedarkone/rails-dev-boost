@@ -43,8 +43,45 @@ module RailsDevelopmentBoost
       end
     end
     
+    class Interdependencies < Hash
+      def associate(file_a, file_b)
+        (self[file_a] ||= []) << file_b
+        (self[file_b] ||= []) << file_a
+      end
+      
+      def each_dependent_on(file)
+        if deps = delete(file)
+          deps.each do |dep|
+            deassociate(dep, file)
+            yield dep
+          end
+        end
+      end
+      
+      def []=(file, v)
+        super(file.path, v)
+      end
+      
+      def [](file)
+        super(file.path)
+      end
+      
+      def delete(file)
+        super(file.path)
+      end
+      
+      private
+      def deassociate(file_a, file_b)
+        if deps = self[file_a]
+          deps.delete(file_b)
+          delete(file_a) if deps.empty?
+        end
+      end
+    end
+    
     LOADED             = Files.new
     CONSTANTS_TO_FILES = ConstantsToFiles.new
+    INTERDEPENDENCIES  = Interdependencies.new
     NOW_UNLOADING      = Set.new
     
     attr_accessor :path, :constants
@@ -63,14 +100,18 @@ module RailsDevelopmentBoost
     def add_constants(new_constants)
       new_constants.each {|new_constant| CONSTANTS_TO_FILES.associate(new_constant, self)}
       @constants |= new_constants
-      retrieve_associated_files.each {|file| file.add_constants(@constants)} if @associated_files
     end
     
     def unload!
       guard_double_unloading do
+        INTERDEPENDENCIES.each_dependent_on(self) {|dependent_file| unload_dependent_file(dependent_file)}
         @constants.dup.each {|const| ActiveSupport::Dependencies.remove_constant(const)}
         clean_up_if_necessary
       end
+    end
+    
+    def unload_dependent_file(dependent_file)
+      dependent_file.unload!
     end
     
     def guard_double_unloading
@@ -98,12 +139,7 @@ module RailsDevelopmentBoost
     end
     
     def associate_with(other_loaded_file)
-      (@associated_files ||= []) << other_loaded_file
-    end
-    
-    def retrieve_associated_files
-      associated_files, @associated_files = @associated_files, nil
-      associated_files
+      INTERDEPENDENCIES.associate(self, other_loaded_file)
     end
     
     def require_path
@@ -112,9 +148,7 @@ module RailsDevelopmentBoost
     
     def stale!
       @mtime = 0
-      if associated_files = retrieve_associated_files
-        associated_files.each(&:stale!)
-      end
+      INTERDEPENDENCIES.each_dependent_on(self, &:stale!)
     end
     
     class << self
