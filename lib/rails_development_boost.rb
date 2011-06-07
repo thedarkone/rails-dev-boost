@@ -23,7 +23,7 @@ module RailsDevelopmentBoost
     
     initializer 'dev_boost.setup', :after => :load_active_support do |app|
       if boost_enabled?
-        [DependenciesPatch, ReferencePatch, DescendantsTrackerPatch, ObservablePatch].each(&:apply!)
+        [DependenciesPatch, ReferencePatch, DescendantsTrackerPatch, ObservablePatch, ReferenceCleanupPatch].each(&:apply!)
         
         if defined?(AbstractController::Helpers)
           ViewHelpersPatch.apply!
@@ -39,6 +39,7 @@ module RailsDevelopmentBoost
   autoload :LoadedFile,              'rails_development_boost/loaded_file'
   autoload :ObservablePatch,         'rails_development_boost/observable_patch'
   autoload :ReferencePatch,          'rails_development_boost/reference_patch'
+  autoload :ReferenceCleanupPatch,   'rails_development_boost/reference_cleanup_patch'
   autoload :ViewHelpersPatch,        'rails_development_boost/view_helpers_patch'
   
   def self.debug!
