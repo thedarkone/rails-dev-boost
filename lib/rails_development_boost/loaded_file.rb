@@ -58,18 +58,6 @@ module RailsDevelopmentBoost
         end
       end
       
-      def []=(file, v)
-        super(file.path, v)
-      end
-      
-      def [](file)
-        super(file.path)
-      end
-      
-      def delete(file)
-        super(file.path)
-      end
-      
       private
       def deassociate(file_a, file_b)
         if deps = self[file_a]
@@ -108,6 +96,15 @@ module RailsDevelopmentBoost
         @constants.dup.each {|const| ActiveSupport::Dependencies.remove_constant(const)}
         clean_up_if_necessary
       end
+    end
+    
+    # consistent hashing
+    def hash
+      @path.hash
+    end
+    
+    def eql?(other)
+      @path.eql?(other)
     end
     
     def unload_dependent_file(dependent_file)
