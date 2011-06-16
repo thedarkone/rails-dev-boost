@@ -222,7 +222,7 @@ module RailsDevelopmentBoost
     end
   
     def error_loading_file(file_path, e)
-      LoadedFile.for(file_path).stale!
+      LoadedFile.for(file_path).stale! if LoadedFile.loaded?(file_path)
       raise e
     end
     
