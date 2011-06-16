@@ -117,7 +117,8 @@ module RailsDevelopmentBoost
       end
       
       def error_loading_file(file_path, e)
-        boost_log('ERROR_WHILE_LOADING', "#{RailsDevelopmentBoost::LoadedFile.for(file_path).boost_inspect}: #{e.inspect}")
+        description = RailsDevelopmentBoost::LoadedFile.loaded?(file_path) ? RailsDevelopmentBoost::LoadedFile.for(file_path).boost_inspect : file_path
+        boost_log('ERROR_WHILE_LOADING', "#{description}: #{e.inspect}")
         super
       end
       
