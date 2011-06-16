@@ -300,13 +300,7 @@ module RailsDevelopmentBoost
     def clear_tracks_of_removed_const(const_name, object = nil)
       autoloaded_constants.delete(const_name)
       @module_cache.remove_const(const_name, object)
-      clean_up_references(const_name, object)
       LoadedFile.const_unloaded(const_name)
-    end
-    
-    def clean_up_references(const_name, object)
-      ActiveSupport::Dependencies::Reference.loose!(const_name)
-      ActiveSupport::DescendantsTracker.delete(object)
     end
     
     def remove_dependent_modules(mod)
