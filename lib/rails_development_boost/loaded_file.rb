@@ -22,6 +22,8 @@ module RailsDevelopmentBoost
       def stored?(file)
         key?(file.path) && self[file.path] == file
       end
+      
+      alias_method :loaded?, :key?
     end
     
     class ConstantsToFiles < Hash
@@ -155,6 +157,10 @@ module RailsDevelopmentBoost
       
       def for(file_path)
         LOADED[file_path]
+      end
+      
+      def loaded?(file_path)
+        LOADED.loaded?(file_path)
       end
       
       def loaded_constants
