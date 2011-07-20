@@ -19,8 +19,10 @@ module RailsDevelopmentBoost
   end
   
   def self.init!
-    if !$rails_rake_task && (Rails.env.development? || (config.respond_to?(:soft_reload) && config.soft_reload))
-      RailsDevelopmentBoost.apply!
-    end
+    RailsDevelopmentBoost.apply! if !$rails_rake_task && (Rails.env.development? || config_soft_reload?)
+  end
+  
+  def self.config_soft_reload?
+    defined?(config) && config.respond_to?(:soft_reload) && config.soft_reload
   end
 end
