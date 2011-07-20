@@ -4,6 +4,8 @@ Make your Rails app 10 times faster in development mode (see FAQ below for more 
 
 Alternative to Josh Goebel's [`rails_dev_mode_performance`](https://github.com/yyyc514/rails_dev_mode_performance) plugin.
 
+Alternative to Robert Pankowecki's [`active_reload`](https://github.com/paneq/active_reload) gem.
+
 ## Branches
 
 If you are using **Rails 3**: [`rails-dev-boost/master`](http://github.com/thedarkone/rails-dev-boost/tree/master) branch.
