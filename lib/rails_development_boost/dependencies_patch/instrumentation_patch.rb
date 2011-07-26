@@ -82,7 +82,7 @@ module RailsDevelopmentBoost
       end
       
       def self.applied?
-        ActiveSupport::Dependencies.include?(self)
+        ActiveSupport::Dependencies.singleton_class.include?(self)
       end
       
       def unload_modified_files
