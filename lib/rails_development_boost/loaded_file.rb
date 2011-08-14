@@ -47,8 +47,8 @@ module RailsDevelopmentBoost
     
     class Interdependencies < Hash
       def associate(file_a, file_b)
-        (self[file_a] ||= []) << file_b
-        (self[file_b] ||= []) << file_a
+        (self[file_a] ||= Set.new) << file_b
+        (self[file_b] ||= Set.new) << file_a
       end
       
       def each_dependent_on(file)
