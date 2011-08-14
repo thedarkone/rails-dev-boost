@@ -40,6 +40,7 @@ module RailsDevelopmentBoost
   autoload :ObservablePatch,         'rails_development_boost/observable_patch'
   autoload :ReferencePatch,          'rails_development_boost/reference_patch'
   autoload :ReferenceCleanupPatch,   'rails_development_boost/reference_cleanup_patch'
+  autoload :RequiredDependency,      'rails_development_boost/required_dependency'
   autoload :ViewHelpersPatch,        'rails_development_boost/view_helpers_patch'
   
   def self.debug!

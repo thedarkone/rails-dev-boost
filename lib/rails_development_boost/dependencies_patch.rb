@@ -188,9 +188,11 @@ module RailsDevelopmentBoost
     
     def required_dependency(file_name)
       # Rails uses require_dependency for loading helpers, we are however dealing with the helper problem elsewhere, so we can skip them
-      if @currently_loading && @currently_loading !~ /_controller(?:\.rb)?\Z/ && file_name !~ /_helper(?:\.rb)?\Z/
-        if full_path = ActiveSupport::Dependencies.search_for_file(file_name)
-          LoadedFile.relate_files(@currently_loading, full_path)
+      return if @currently_loading && @currently_loading =~ /_controller(?:\.rb)?\Z/ && file_name =~ /_helper(?:\.rb)?\Z/
+      
+      if full_path = ActiveSupport::Dependencies.search_for_file(file_name)
+        RequiredDependency.new(@currently_loading).related_files.each do |related_file|
+          LoadedFile.relate_files(related_file, full_path)
         end
       end
     end
