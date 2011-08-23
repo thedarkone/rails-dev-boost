@@ -114,8 +114,7 @@ module RailsDevelopmentBoost
     end
     
     def guard_double_unloading
-      unless NOW_UNLOADING.include?(self)
-        NOW_UNLOADING << self
+      if NOW_UNLOADING.add?(self)
         begin
           yield
         ensure
