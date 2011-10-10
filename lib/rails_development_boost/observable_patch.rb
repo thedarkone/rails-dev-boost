@@ -20,7 +20,7 @@ module RailsDevelopmentBoost
       defined?(ActiveModel::Observing::ClassMethods) && ActiveModel::Observing::ClassMethods.public_instance_methods(false).map(&:to_s).include?('add_observer')
     end
     
-    def add_observer_with_unloading(observer)
+    def add_observer_with_unloading(observer, func=:update)
       if kind_of?(Module)
         my_module, observer_module = ObservablePatch._get_module(self), ObservablePatch._get_module(observer)
       
@@ -28,7 +28,7 @@ module RailsDevelopmentBoost
         ActiveSupport::Dependencies.add_explicit_dependency(observer_module, my_module)
       end
       
-      add_observer_without_unloading(observer)
+      add_observer_without_unloading(observer, func)
     end
     
     def _get_module(object)
