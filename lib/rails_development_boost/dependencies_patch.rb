@@ -64,11 +64,13 @@ module RailsDevelopmentBoost
         @singleton_ancestors = Hash.new {|h, klass| h[klass] = klass.singleton_class.ancestors}
       end
       
-      def each_dependent_on(mod)
+      def each_dependent_on(mod, &block)
+        arr = []
         each_inheriting_from(mod) do |other|
           mod_name = other._mod_name
-          yield other if qualified_const_defined?(mod_name) && mod_name.constantize == other
+          arr << other if qualified_const_defined?(mod_name) && mod_name.constantize == other
         end
+        arr.each(&block)
       end
       
       def remove_const(const_name, object)
@@ -99,12 +101,12 @@ module RailsDevelopmentBoost
       
       def each_inheriting_from(mod_or_class)
         if Class === mod_or_class
-          @classes.dup.each do |other_class|
+          @classes.each do |other_class|
             yield other_class if other_class < mod_or_class && first_non_anonymous_superclass(other_class) == mod_or_class
           end
         else
           [@classes, @modules].each do |collection|
-            collection.dup.each do |other|
+            collection.each do |other|
               yield other if other < mod_or_class || @singleton_ancestors[other].include?(mod_or_class)
             end
           end
