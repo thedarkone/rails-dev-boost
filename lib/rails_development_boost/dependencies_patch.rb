@@ -336,12 +336,8 @@ module RailsDevelopmentBoost
     MONGOID_RELATION_CACHES = [:@klass, :@inverse_klass]
     def update_mongoid_related_references(klass)
       if defined?(Mongoid::Document) && klass < Mongoid::Document
-        while (superclass = Util.first_non_anonymous_superclass(superclass || klass)) != Object && superclass < Mongoid::Document
-          remove_constant(superclass._mod_name) # this is necessary to nuke the @_types caches
-        end
-        
         module_cache.each_dependent_on(Mongoid::Document) do |model|
-          clean_up_relation_caches(model.relations, klass, MONGOID_RELATION_CACHES)
+          remove_constant(model._mod_name)
         end
       end
     end
