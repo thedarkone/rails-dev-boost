@@ -45,9 +45,11 @@ I needed better performance in development mode right away, so here is an altern
 
 Usage through `Gemfile`:
 
-    group :development do
-      gem 'rails-dev-boost', :git => 'git://github.com/thedarkone/rails-dev-boost.git', :require => 'rails_development_boost'
-    end
+```ruby
+group :development do
+  gem 'rails-dev-boost', :git => 'git://github.com/thedarkone/rails-dev-boost.git', :require => 'rails_development_boost'
+end
+```
 
 Installing as a plugin:
 
@@ -61,7 +63,9 @@ When the server is started in *development* mode, the special unloading mechanis
 
 It can also be used in combination with [RailsTestServing](https://github.com/Roman2K/rails-test-serving) for even faster test runs by forcefully enabling it in test mode. To do so, add the following in `config/environments/test.rb`:
 
-    def config.soft_reload() true end if RailsTestServing.active?
+```ruby
+def config.soft_reload() true end if RailsTestServing.active?
+```
 
 ## Known limitations
 
@@ -69,48 +73,50 @@ The only code `rails-dev-boost` is unable to handle are "class-level" reloadable
 
 ### Class-level reference examples
 
-    #app/models/article.rb
-    class Article
-    end
-    
-    #app/models/blog.rb
-    class Blog
-      ARTICLE_CLASS = Article # <- stores class-level reference
-      @article = Article # <- stores class-level reference
-      @@article = Article # <- stores class-level reference
+```ruby
+# app/models/article.rb
+class Article
+end
 
-      MODELS_ARRAY = []
-      MODELS_ARRAY << Article # <- stores class-level reference
+# app/models/blog.rb
+class Blog
+  ARTICLE_CLASS = Article # <- stores class-level reference
+  @article = Article # <- stores class-level reference
+  @@article = Article # <- stores class-level reference
 
-      MODELS_CACHE = {}
-      MODELS_CACHE['Article'] ||= Article # <- stores class-level reference
+  MODELS_ARRAY = []
+  MODELS_ARRAY << Article # <- stores class-level reference
 
-      class << self
-        attr_accessor :article_klass
-      end
+  MODELS_CACHE = {}
+  MODELS_CACHE['Article'] ||= Article # <- stores class-level reference
 
-      self.article_klass = Article # <- stores class-level reference
+  class << self
+    attr_accessor :article_klass
+  end
 
-      def self.article_klass
-        @article_klass ||= Article # <- stores class-level reference
-      end
+  self.article_klass = Article # <- stores class-level reference
 
-      def self.article_klass2
-        @article_klass ||= 'Article'.constantize # <- stores class-level reference
-      end
+  def self.article_klass
+    @article_klass ||= Article # <- stores class-level reference
+  end
 
-      def self.find_article_klass
-        const_set(:ARTICLE_CLASS, Article) # <- stores class-level reference
-      end
+  def self.article_klass2
+    @article_klass ||= 'Article'.constantize # <- stores class-level reference
+  end
 
-      def self.all_articles
-        # caching object instances is as bad, because each object references its own class
-        @all_articles ||= [Article.new, Article.new] # <- stores class-level reference
-      end
+  def self.find_article_klass
+    const_set(:ARTICLE_CLASS, Article) # <- stores class-level reference
+  end
 
-      article_kls_ref = Article
-      GET_ARTICLE_PROC = Proc.new { article_kls_ref } # <- stores class-level reference via closure
-    end
+  def self.all_articles
+    # caching object instances is as bad, because each object references its own class
+    @all_articles ||= [Article.new, Article.new] # <- stores class-level reference
+  end
+
+  article_kls_ref = Article
+  GET_ARTICLE_PROC = Proc.new { article_kls_ref } # <- stores class-level reference via closure
+end
+```
 
 ### What goes wrong
 
@@ -131,12 +137,14 @@ Using the example files from above, here's the output from a Rails console:
 
 Now imagine that we change the `app/models/article.rb` and add a new method:
 
-    #app/models/article.rb
-    class Article
-      def say_hello
-        puts "Hello world!"
-      end
-    end
+```ruby
+# app/models/article.rb
+class Article
+  def say_hello
+    puts "Hello world!"
+  end
+end
+```
 
 Back in console, trigger an app reload:
 
@@ -216,32 +224,36 @@ Now we've ended up with 2 distinct `Article` classes. To fix the situation we ca
 
 The best solution is to avoid class-level references at all. A typical bad code looking like this:
 
-    #app/models/article.rb
-    class Article < ActiveRecord::Base
-    end
-    
-    #app/models/blog.rb
-    class Blog < ActiveRecord::Base
-      def self.all_articles
-        @all_articles ||= Article.all
-      end
-    end
+```ruby
+# app/models/article.rb
+class Article < ActiveRecord::Base
+end
+
+# app/models/blog.rb
+class Blog < ActiveRecord::Base
+  def self.all_articles
+    @all_articles ||= Article.all
+  end
+end
+```
 
 can easily be rewritten like this:
 
-    #app/models/article.rb
-    class Article < ActiveRecord::Base
-      def self.all_articles
-        @all_articles ||= all
-      end
-    end
-    
-    #app/models/blog.rb
-    class Blog < ActiveRecord::Base
-      def self.all_articles
-        Article.all_articles
-      end
-    end
+```ruby
+# app/models/article.rb
+class Article < ActiveRecord::Base
+  def self.all_articles
+    @all_articles ||= all
+  end
+end
+
+# app/models/blog.rb
+class Blog < ActiveRecord::Base
+  def self.all_articles
+    Article.all_articles
+  end
+end
+```
 
 This way saving `arcticle.rb` will trigger the reload of `@all_articles`.
 
@@ -249,21 +261,23 @@ This way saving `arcticle.rb` will trigger the reload of `@all_articles`.
 
 If the code refactor isn't possible, make use of the `ActiveSupport`'s `require_dependency`:
 
-    #app/models/blog.rb
-    require_dependency 'article'
-    
-    class Blog < ActiveRecord::Base
-      def self.all_articles
-        @all_articles ||= Article.all
-      end
-      
-      def self.authors
-        @all_authors ||= begin
-          require_dependency 'author' # dynamic require_dependency is also fine
-          Author.all
-        end
-      end
+```ruby
+#app/models/blog.rb
+require_dependency 'article'
+
+class Blog < ActiveRecord::Base
+  def self.all_articles
+    @all_articles ||= Article.all
+  end
+  
+  def self.authors
+    @all_authors ||= begin
+      require_dependency 'author' # dynamic require_dependency is also fine
+      Author.all
     end
+  end
+end
+```
 
 ## FAQ
 
