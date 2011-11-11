@@ -45,6 +45,14 @@ module RailsDevelopmentBoost
       end
     end
     
+    def self.async!
+      @async = true
+    end
+    
+    def self.async?
+      @async
+    end
+    
     def self.applied?
       ActiveSupport::Dependencies < self
     end
@@ -135,8 +143,15 @@ module RailsDevelopmentBoost
     
     def unload_modified_files!
       log_call
-      LoadedFile.unload_modified!
-      @module_cache = nil
+      if DependenciesPatch.async?
+        # the Async heartbeat/init check needs to be here (instead of it being a boot time thing),
+        # because of the forking ruby servers (threads don't survive the forking)
+        Async.heartbeat_check!
+        Async.synchronize { @module_cache = nil }
+      else
+        LoadedFile.unload_modified!
+        @module_cache = nil
+      end
     end
     
     def remove_explicitely_unloadable_constants!
@@ -180,9 +195,11 @@ module RailsDevelopmentBoost
     
     # Augmented `remove_constant'.
     def remove_constant_with_handling_of_connections(const_name)
-      module_cache # make sure module_cache has been created
-      prevent_further_removal_of(const_name) do
-        unprotected_remove_constant(const_name)
+      Async.synchronize do
+        module_cache # make sure module_cache has been created
+        prevent_further_removal_of(const_name) do
+          unprotected_remove_constant(const_name)
+        end
       end
     end
     
