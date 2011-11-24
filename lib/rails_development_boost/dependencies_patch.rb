@@ -147,11 +147,10 @@ module RailsDevelopmentBoost
         # the Async heartbeat/init check needs to be here (instead of it being a boot time thing),
         # because of the forking ruby servers (threads don't survive the forking)
         Async.heartbeat_check!
-        Async.synchronize { @module_cache = nil }
       else
         LoadedFile.unload_modified!
-        @module_cache = nil
       end
+      async_synchronize { @module_cache = nil }
     end
     
     def remove_explicitely_unloadable_constants!
@@ -195,7 +194,7 @@ module RailsDevelopmentBoost
     
     # Augmented `remove_constant'.
     def remove_constant_with_handling_of_connections(const_name)
-      Async.synchronize do
+      async_synchronize do
         module_cache # make sure module_cache has been created
         prevent_further_removal_of(const_name) do
           unprotected_remove_constant(const_name)
@@ -227,6 +226,14 @@ module RailsDevelopmentBoost
     end
     
   private
+    def async_synchronize
+      if DependenciesPatch.async?
+        Async.synchronize { yield }
+      else
+        yield
+      end
+    end
+  
     def unprotected_remove_constant(const_name)
       if qualified_const_defined?(const_name) && object = const_name.constantize
         handle_connected_constants(object, const_name)
