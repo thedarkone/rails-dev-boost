@@ -8,7 +8,7 @@ module RailsDevelopmentBoost
     MONITOR = Monitor.new
     
     def heartbeat_check
-      running? ? re_raise_unload_error : start!
+      running? ? re_raise_unload_error_if_any : start!
     end
     
     def synchronize
@@ -27,7 +27,7 @@ module RailsDevelopmentBoost
       @reactor.try(:alive?)
     end
     
-    def re_raise_unload_error
+    def re_raise_unload_error_if_any
       if e = @unload_error
         @unload_error = nil
         raise e, e.message, e.backtrace
