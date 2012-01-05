@@ -7,7 +7,7 @@ module RailsDevelopmentBoost
     
     MONITOR = Monitor.new
     
-    def heartbeat_check
+    def heartbeat_check!
       running? ? re_raise_unload_error_if_any : start!
     end
     
