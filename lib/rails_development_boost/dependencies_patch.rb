@@ -144,8 +144,8 @@ module RailsDevelopmentBoost
     def unload_modified_files!
       log_call
       if DependenciesPatch.async?
-        # the Async heartbeat/init check needs to be here (instead of it being a boot time thing),
-        # because of the forking ruby servers (threads don't survive the forking)
+        # because of the forking ruby servers (threads don't survive the forking),
+        # the Async heartbeat/init check needs to be here (instead of it being a boot time thing)
         Async.heartbeat_check!
       else
         LoadedFile.unload_modified!
