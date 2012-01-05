@@ -44,7 +44,8 @@ module RailsDevelopmentBoost
           end
         end
       end
-    rescue Exception => @unload_error
+    rescue Exception => e
+      @unload_error ||= e
     end
     
     class Reactor
