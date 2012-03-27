@@ -15,8 +15,10 @@ module RailsDevelopmentBoost
           start!
         end
         re_raise_unload_error_if_any
+        false
       else
         start!
+        true
       end
     end
     
