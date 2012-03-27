@@ -8,7 +8,16 @@ module RailsDevelopmentBoost
     MONITOR = Monitor.new
     
     def heartbeat_check!
-      running? ? re_raise_unload_error_if_any : start!
+      if @reactor
+        unless @reactor.alive?
+          @reactor.stop
+          @reactor = nil
+          start!
+        end
+        re_raise_unload_error_if_any
+      else
+        start!
+      end
     end
     
     def synchronize
@@ -21,10 +30,6 @@ module RailsDevelopmentBoost
       @reactor = Reactor.new
       @reactor.watch(ActiveSupport::Dependencies.autoload_paths) {|changed_dirs| unload_affected(changed_dirs)}
       @reactor.start!
-    end
-    
-    def running?
-      @reactor.try(:alive?)
     end
     
     def re_raise_unload_error_if_any
@@ -50,7 +55,7 @@ module RailsDevelopmentBoost
     
     class Reactor
       delegate :alive?, :to => '@thread'
-      delegate :watch, :to => '@watcher'
+      delegate :watch, :stop, :to => '@watcher'
       
       def initialize
         @watcher = FSEvent.new
