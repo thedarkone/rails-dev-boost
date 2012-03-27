@@ -165,7 +165,10 @@ module RailsDevelopmentBoost
     
     # Augmented `load_file'.
     def load_file_with_constant_tracking(path, *args)
-      async_synchronize { load_file_with_constant_tracking_internal(path, args) }
+      async_synchronize do
+        @module_cache = nil # nuking the module_cache helps to avoid any stale-class issues when the async mode is used in a console session
+        load_file_with_constant_tracking_internal(path, args)
+      end
     end
     
     def now_loading(path)
