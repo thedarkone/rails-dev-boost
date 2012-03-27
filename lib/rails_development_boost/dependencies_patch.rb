@@ -165,16 +165,7 @@ module RailsDevelopmentBoost
     
     # Augmented `load_file'.
     def load_file_with_constant_tracking(path, *args)
-      result = now_loading(path) { load_file_without_constant_tracking(path, *args) }
-      
-      unless load_once_path?(path)
-        new_constants = autoloaded_constants - LoadedFile.loaded_constants
-      
-        # Associate newly loaded constants to the file just loaded
-        associate_constants_to_file(new_constants, path)
-      end
-
-      result
+      async_synchronize { load_file_with_constant_tracking_internal(path, args) }
     end
     
     def now_loading(path)
@@ -228,6 +219,19 @@ module RailsDevelopmentBoost
     end
     
   private
+    def load_file_with_constant_tracking_internal(path, args)
+      result = now_loading(path) { load_file_without_constant_tracking(path, *args) }
+      
+      unless load_once_path?(path)
+        new_constants = autoloaded_constants - LoadedFile.loaded_constants
+      
+        # Associate newly loaded constants to the file just loaded
+        associate_constants_to_file(new_constants, path)
+      end
+
+      result
+    end
+  
     def async_synchronize
       if DependenciesPatch.async?
         Async.synchronize { yield }
