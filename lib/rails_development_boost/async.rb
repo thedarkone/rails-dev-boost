@@ -15,10 +15,8 @@ module RailsDevelopmentBoost
           start!
         end
         re_raise_unload_error_if_any
-        false
       else
         start!
-        true
       end
     end
     
@@ -32,6 +30,7 @@ module RailsDevelopmentBoost
       @reactor = Reactor.new
       @reactor.watch(ActiveSupport::Dependencies.autoload_paths) {|changed_dirs| unload_affected(changed_dirs)}
       @reactor.start!
+      LoadedFile.unload_modified! # don't miss-out on any of the file changes as the async thread hasn't been started as of yet
     end
     
     def re_raise_unload_error_if_any
