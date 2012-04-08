@@ -147,7 +147,7 @@ module RailsDevelopmentBoost
         # because of the forking ruby servers (threads don't survive the forking),
         # the Async heartbeat/init check needs to be here (instead of it being a boot time thing)
         if first_start = Async.heartbeat_check!
-          LoadedFile.unload_modified! # don't miss-out on any of the file changes as the async thread has been started as of yet
+          LoadedFile.unload_modified! # don't miss-out on any of the file changes as the async thread hasn't been started as of yet
         end
       else
         LoadedFile.unload_modified!
