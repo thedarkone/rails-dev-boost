@@ -57,6 +57,19 @@ module RailsDevelopmentBoost
     mattr_accessor :explicit_dependencies
     self.explicit_dependencies = {}
     
+    module Util
+      extend self
+      
+      def anonymous_const_name?(const_name)
+        !const_name || const_name.empty?
+      end
+      
+      def first_non_anonymous_superclass(klass)
+        while (klass = klass.superclass) && anonymous_const_name?(klass._mod_name); end
+        klass
+      end
+    end
+    
     class ModuleCache
       def initialize
         @classes, @modules = [], []
@@ -64,11 +77,13 @@ module RailsDevelopmentBoost
         @singleton_ancestors = Hash.new {|h, klass| h[klass] = klass.singleton_class.ancestors}
       end
       
-      def each_dependent_on(mod)
+      def each_dependent_on(mod, &block)
+        arr = []
         each_inheriting_from(mod) do |other|
           mod_name = other._mod_name
-          yield other if qualified_const_defined?(mod_name) && mod_name.constantize == other
+          arr << other if qualified_const_defined?(mod_name) && mod_name.constantize == other
         end
+        arr.each(&block)
       end
       
       def remove_const(const_name, object)
@@ -86,7 +101,7 @@ module RailsDevelopmentBoost
       private
       def relevant?(mod)
         const_name = mod._mod_name
-        !anonymous_const_name?(const_name) && in_autoloaded_namespace?(const_name)
+        !Util.anonymous_const_name?(const_name) && in_autoloaded_namespace?(const_name)
       end
       
       def remove_const_from_colletion(collection, const_name, object)
@@ -99,21 +114,16 @@ module RailsDevelopmentBoost
       
       def each_inheriting_from(mod_or_class)
         if Class === mod_or_class
-          @classes.dup.each do |other_class|
-            yield other_class if other_class < mod_or_class && first_non_anonymous_superclass(other_class) == mod_or_class
+          @classes.each do |other_class|
+            yield other_class if other_class < mod_or_class && Util.first_non_anonymous_superclass(other_class) == mod_or_class
           end
         else
           [@classes, @modules].each do |collection|
-            collection.dup.each do |other|
+            collection.each do |other|
               yield other if other < mod_or_class || @singleton_ancestors[other].include?(mod_or_class)
             end
           end
         end
-      end
-      
-      def first_non_anonymous_superclass(klass)
-        while (klass = klass.superclass) && anonymous_const_name?(klass._mod_name); end
-        klass
       end
       
       NOTHING = ''
@@ -122,10 +132,6 @@ module RailsDevelopmentBoost
           return true if LoadedFile.loaded_constant?(const_name)
         end while const_name.sub!(/::[^:]+\Z/, NOTHING)
         false
-      end
-      
-      def anonymous_const_name?(const_name)
-        !const_name || const_name.empty?
       end
       
       def qualified_const_defined?(const_name)
@@ -234,6 +240,7 @@ module RailsDevelopmentBoost
       remove_explicit_dependencies_of(const_name)
       remove_dependent_modules(object)
       update_activerecord_related_references(object)
+      update_mongoid_related_references(object)
       remove_nested_constants(const_name)
     end
     
@@ -313,6 +320,7 @@ module RailsDevelopmentBoost
       remove_constant(dependent_module._mod_name)
     end
     
+    AR_REFLECTION_CACHES = [:@klass]
     # egrep -ohR '@\w*([ck]lass|refl|target|own)\w*' activerecord | sort | uniq
     def update_activerecord_related_references(klass)
       return unless defined?(ActiveRecord)
@@ -321,10 +329,27 @@ module RailsDevelopmentBoost
       # Reset references held by macro reflections (klass is lazy loaded, so
       # setting its cache to nil will force the name to be resolved again).
       ActiveRecord::Base.descendants.each do |model|
-        model.reflections.each_value do |reflection|
-          reflection.instance_eval do
-            @klass = nil if @klass == klass
-          end
+        clean_up_relation_caches(model.reflections, klass, AR_REFLECTION_CACHES)
+      end
+    end
+    
+    MONGOID_RELATION_CACHES = [:@klass, :@inverse_klass]
+    def update_mongoid_related_references(klass)
+      if defined?(Mongoid::Document) && klass < Mongoid::Document
+        while (superclass = Util.first_non_anonymous_superclass(superclass || klass)) != Object && superclass < Mongoid::Document
+          remove_constant(superclass._mod_name) # this is necessary to nuke the @_types caches
+        end
+        
+        module_cache.each_dependent_on(Mongoid::Document) do |model|
+          clean_up_relation_caches(model.relations, klass, MONGOID_RELATION_CACHES)
+        end
+      end
+    end
+    
+    def clean_up_relation_caches(relations, klass, ivar_names)
+      relations.each_value do |relation|
+        ivar_names.each do |ivar_name|
+          relation.instance_variable_set(ivar_name, nil) if relation.instance_variable_get(ivar_name) == klass
         end
       end
     end
