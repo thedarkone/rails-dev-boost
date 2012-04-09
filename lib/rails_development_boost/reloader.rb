@@ -9,12 +9,16 @@ module RailsDevelopmentBoost
     
     def execute
       init unless @inited
-      ActiveSupport::Dependencies.unload_modified_files!
-      false # rails-dev-boost should never trigger routes or i18n reloads (via Rails::Application#reload_dependencies?)
+      @last_run_result = ActiveSupport::Dependencies.unload_modified_files!
+    end
+    
+    def execute_if_updated
+      @last_run_result.nil? ? execute : @last_run_result
+    ensure
+      @last_run_result = nil
     end
 
-    alias_method :execute_if_updated, :execute
-    alias_method :updated?,           :execute
+    alias_method :updated?, :execute
     
     private
     def init
