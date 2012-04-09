@@ -4,7 +4,7 @@ module RailsDevelopmentBoost
     
     def hook_in!
       Rails.application.reloaders.unshift(self)
-      ActionDispatch::Reloader.to_prepare { RailsDevelopmentBoost::Reloader.execute_if_updated }
+      ActionDispatch::Reloader.to_prepare(:prepend => true) { RailsDevelopmentBoost::Reloader.execute_if_updated }
     end
     
     def execute
