@@ -136,6 +136,7 @@ module RailsDevelopmentBoost
     def unload_modified_files!
       log_call
       LoadedFile.unload_modified!
+    ensure
       @module_cache = nil
     end
     
