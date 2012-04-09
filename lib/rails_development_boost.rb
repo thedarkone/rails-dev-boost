@@ -5,7 +5,10 @@ module RailsDevelopmentBoost
     config.after_initialize do
       if boost_enabled?
         # this should go into ActiveSupport.on_load(:action_pack), alas Rails doesn't provide it
-        if defined?(ActionDispatch::Reloader) # post 0f7c970
+        if Rails.application.config.respond_to?(:reload_classes_only_on_change) # post fa1d9a
+          Rails.application.config.reload_classes_only_on_change = true
+          Reloader.hook_in!
+        elsif defined?(ActionDispatch::Reloader) # post 0f7c970
           ActionDispatch::Reloader.to_prepare { ActiveSupport::Dependencies.unload_modified_files! }
         else
           ActionDispatch::Callbacks.before    { ActiveSupport::Dependencies.unload_modified_files! }
@@ -41,6 +44,7 @@ module RailsDevelopmentBoost
   autoload :ObservablePatch,         'rails_development_boost/observable_patch'
   autoload :ReferencePatch,          'rails_development_boost/reference_patch'
   autoload :ReferenceCleanupPatch,   'rails_development_boost/reference_cleanup_patch'
+  autoload :Reloader,                'rails_development_boost/reloader'
   autoload :RequiredDependency,      'rails_development_boost/required_dependency'
   autoload :ViewHelpersPatch,        'rails_development_boost/view_helpers_patch'
   
