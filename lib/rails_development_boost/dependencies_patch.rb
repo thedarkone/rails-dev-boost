@@ -150,6 +150,7 @@ module RailsDevelopmentBoost
       else
         LoadedFile.unload_modified!
       end
+    ensure
       async_synchronize { @module_cache = nil }
     end
     
@@ -216,6 +217,12 @@ module RailsDevelopmentBoost
         unless load_once_path?(require_path)
           associate_constants_to_file(autoloaded_constants, "#{require_path}.rb") # slightly heavy-handed..
         end
+      end
+    end
+    
+    def in_autoload_path?(expanded_file_path)
+      autoload_paths.any? do |autoload_path|
+        expanded_file_path.starts_with?(autoload_path.ends_with?('/') ? autoload_path : "#{autoload_path}/")
       end
     end
     

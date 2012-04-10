@@ -4,17 +4,21 @@ module RailsDevelopmentBoost
     
     def hook_in!
       Rails.application.reloaders.unshift(self)
-      ActionDispatch::Reloader.to_prepare { RailsDevelopmentBoost::Reloader.execute_if_updated }
+      ActionDispatch::Reloader.to_prepare(:prepend => true) { RailsDevelopmentBoost::Reloader.execute_if_updated }
     end
     
     def execute
       init unless @inited
-      ActiveSupport::Dependencies.unload_modified_files!
-      false # rails-dev-boost should never trigger routes or i18n reloads (via Rails::Application#reload_dependencies?)
+      @last_run_result = ActiveSupport::Dependencies.unload_modified_files!
+    end
+    
+    def execute_if_updated
+      @last_run_result.nil? ? execute : @last_run_result
+    ensure
+      @last_run_result = nil
     end
 
-    alias_method :execute_if_updated, :execute
-    alias_method :updated?,           :execute
+    alias_method :updated?, :execute
     
     private
     def init
@@ -26,7 +30,7 @@ module RailsDevelopmentBoost
       if (dir_glob = reloader.instance_variable_get(:@glob)).kind_of?(String)
         autoload_paths = ActiveSupport::Dependencies.autoload_paths
         dir_glob.sub(/\A\{/, '').sub(/\}\Z/, '').split(',').all? do |glob_path|
-          autoload_paths.any? {|autoload_path| glob_path.starts_with?(autoload_path)} || puts(dir_glob)
+          autoload_paths.any? {|autoload_path| glob_path.starts_with?(autoload_path)}
         end
       end
     end

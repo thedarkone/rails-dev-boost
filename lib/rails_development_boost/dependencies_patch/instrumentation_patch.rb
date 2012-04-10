@@ -71,6 +71,11 @@ module RailsDevelopmentBoost
           boost_log('CHANGED', "#{file.boost_inspect}")
           unload_modified_file_without_instrumentation(file)
         end
+        
+        def unload_decorator_file_with_instrumentation(file)
+          boost_log('UNLOAD_DECORATOR_FILE', "#{file.boost_inspect}")
+          unload_decorator_file_without_instrumentation(file)
+        end
       end
       
       def self.apply!
@@ -87,8 +92,9 @@ module RailsDevelopmentBoost
       
       def unload_modified_files!
         boost_log('--- START ---')
-        super
-        boost_log('--- END ---')
+        super.tap do
+          boost_log('--- END ---')
+        end
       end
       
       def load_file_without_constant_tracking(path, *args)

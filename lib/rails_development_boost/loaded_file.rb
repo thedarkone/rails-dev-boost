@@ -6,12 +6,34 @@ module RailsDevelopmentBoost
       end
       
       def unload_modified!
-        values.each do |file|
-          unload_modified_file(file) if file.changed?
+        each_file_unloading do |file|
+          if changed = file.changed?
+            unload_modified_file(file)
+          end
+          changed
         end
       end
       
+      def each_file_unloading
+        unloaded_something = false
+        values.each do |file|
+          if yield(file)
+            unloaded_something = true
+          end
+        end
+        if unloaded_something
+          values.each do |file|
+            unload_decorator_file(file) if file.decorator_like?
+          end
+        end
+        unloaded_something
+      end
+      
       def unload_modified_file(file)
+        file.unload!
+      end
+      
+      def unload_decorator_file(file)
         file.unload!
       end
       
@@ -90,6 +112,12 @@ module RailsDevelopmentBoost
     def add_constants(new_constants)
       new_constants.each {|new_constant| CONSTANTS_TO_FILES.associate(new_constant, self)}
       @constants |= new_constants
+    end
+    
+    # "decorator" files are popular with certain Rails frameworks (spree/refinerycms etc.) they don't define their own constants, instead
+    # they are usually used for adding methods to other classes via Model.class_eval { def meth; end }
+    def decorator_like?
+      @constants.empty? && !INTERDEPENDENCIES[self]
     end
     
     def unload!
