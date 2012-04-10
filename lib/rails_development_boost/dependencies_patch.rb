@@ -206,7 +206,7 @@ module RailsDevelopmentBoost
     
     def add_explicit_dependency(parent, child)
       if !Util.anonymous_const_name?(child_mod_name = child._mod_name) && !Util.anonymous_const_name?(parent_mod_name = parent._mod_name)
-        (explicit_dependencies[parent_mod_name] ||= []) << child_mod_name
+        ((explicit_dependencies[parent_mod_name] ||= []) << child_mod_name).uniq!
       end
     end
     
@@ -307,7 +307,7 @@ module RailsDevelopmentBoost
     
     def remove_explicit_dependencies_of(const_name)
       if dependencies = explicit_dependencies.delete(const_name)
-        dependencies.uniq.each {|depending_const| remove_explicit_dependency(const_name, depending_const)}
+        dependencies.each {|depending_const| remove_explicit_dependency(const_name, depending_const)}
       end
     end
     
