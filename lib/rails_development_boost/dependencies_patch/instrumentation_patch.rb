@@ -71,6 +71,11 @@ module RailsDevelopmentBoost
           boost_log('CHANGED', "#{file.boost_inspect}")
           unload_modified_file_without_instrumentation(file)
         end
+        
+        def unload_decorator_file_with_instrumentation(file)
+          boost_log('UNLOAD_DECORATOR_FILE', "#{file.boost_inspect}")
+          unload_decorator_file_without_instrumentation(file)
+        end
       end
       
       def self.apply!
