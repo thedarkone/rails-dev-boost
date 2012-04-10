@@ -205,7 +205,9 @@ module RailsDevelopmentBoost
     end
     
     def add_explicit_dependency(parent, child)
-      (explicit_dependencies[parent._mod_name] ||= []) << child._mod_name
+      if !Util.anonymous_const_name?(child_mod_name = child._mod_name) && !Util.anonymous_const_name?(parent_mod_name = parent._mod_name)
+        (explicit_dependencies[parent_mod_name] ||= []) << child_mod_name
+      end
     end
     
     def handle_already_autoloaded_constants! # we might be late to the party and other gems/plugins might have already triggered autoloading of some constants
