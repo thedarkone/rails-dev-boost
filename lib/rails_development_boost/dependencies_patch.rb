@@ -301,7 +301,9 @@ module RailsDevelopmentBoost
     
     def remove_explicit_dependencies_of(const_name)
       if dependencies = explicit_dependencies.delete(const_name)
-        dependencies.each {|depending_const| remove_explicit_dependency(const_name, depending_const)}
+        dependencies.each do |depending_const|
+          remove_explicit_dependency(const_name, depending_const) if LoadedFile.loaded_constant?(depending_const)
+        end
       end
     end
     
