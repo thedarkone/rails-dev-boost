@@ -6,7 +6,11 @@ module RailsDevelopmentBoost
     
     # we need to explicitly associate helpers to their including controllers/mailers
     def add_template_helper_with_const_association_tracking(helper_module)
-      ActiveSupport::Dependencies.add_explicit_dependency(helper_module, self)
+      if DependenciesPatch::Util.anonymous_const?(helper_module)
+        helper_module.ancestors.each {|ancestor| ActiveSupport::Dependencies.add_explicit_dependency(ancestor, self)}
+      else
+        ActiveSupport::Dependencies.add_explicit_dependency(helper_module, self)
+      end
       add_template_helper_without_const_association_tracking(helper_module)
     end
 
