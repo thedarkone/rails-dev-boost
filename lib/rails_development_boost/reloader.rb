@@ -22,8 +22,21 @@ module RailsDevelopmentBoost
     
     private
     def init
-      Rails.application.reloaders.delete_if {|reloader| rails_file_checker?(reloader)} # remove the Rails' default file_checker
+      Rails.application.reloaders.delete_if do |reloader|
+        if rails_file_checker?(reloader)
+          pacify_rails_file_checker(reloader) # the checker's methods are still being called in AD::Reloader's to_prepare callback
+          true # remove the Rails' default file_checker
+        end
+      end
       @inited = true
+    end
+    
+    def pacify_rails_file_checker(file_checker)
+      file_checker.singleton_class.class_eval do
+        def updated?;           false; end
+        def execute;            false; end
+        def execute_if_updated; false; end
+      end
     end
     
     def rails_file_checker?(reloader)
