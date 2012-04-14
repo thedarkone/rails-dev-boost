@@ -60,12 +60,16 @@ module RailsDevelopmentBoost
     module Util
       extend self
       
+      def anonymous_const?(mod)
+        anonymous_const_name?(mod._mod_name)
+      end
+      
       def anonymous_const_name?(const_name)
         !const_name || const_name.empty?
       end
       
       def first_non_anonymous_superclass(klass)
-        while (klass = klass.superclass) && anonymous_const_name?(klass._mod_name); end
+        while (klass = klass.superclass) && anonymous_const?(klass); end
         klass
       end
     end
