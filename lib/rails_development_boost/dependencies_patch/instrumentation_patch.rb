@@ -11,8 +11,13 @@ module RailsDevelopmentBoost
         module ClassMethods
           def included(klass)
             (public_instance_methods(false) + private_instance_methods(false) + protected_instance_methods(false)).each do |method|
-              if m = method.to_s.match(/(.+)_with_(.+)/)
-                klass.alias_method_chain m[1], m[2]
+              if m = method.to_s.match(/\A(.+)_with_(.+)\Z/)
+                meth_name, extension = m[1], m[2]
+                extension.sub!(/[?!=]\Z/) do |modifier|
+                  meth_name << modifier
+                  ''
+                end
+                klass.alias_method_chain meth_name, extension
               end
             end
 
