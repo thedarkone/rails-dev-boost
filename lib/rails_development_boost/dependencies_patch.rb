@@ -57,6 +57,9 @@ module RailsDevelopmentBoost
     mattr_accessor :explicit_dependencies
     self.explicit_dependencies = {}
     
+    mattr_accessor :currently_loading
+    self.currently_loading = []
+    
     module Util
       extend self
       
@@ -71,6 +74,14 @@ module RailsDevelopmentBoost
       def first_non_anonymous_superclass(klass)
         while (klass = klass.superclass) && anonymous_const?(klass); end
         klass
+      end
+      
+      NOTHING = ''
+      def in_autoloaded_namespace?(const_name) # careful, modifies passed in const_name!
+        begin
+          return true if LoadedFile.loaded_constant?(const_name)
+        end while const_name.sub!(/::[^:]+\Z/, NOTHING)
+        false
       end
     end
     
@@ -105,7 +116,7 @@ module RailsDevelopmentBoost
       private
       def relevant?(mod)
         const_name = mod._mod_name
-        !Util.anonymous_const_name?(const_name) && in_autoloaded_namespace?(const_name)
+        !Util.anonymous_const_name?(const_name) && Util.in_autoloaded_namespace?(const_name)
       end
       
       def remove_const_from_colletion(collection, const_name, object)
@@ -128,14 +139,6 @@ module RailsDevelopmentBoost
             end
           end
         end
-      end
-      
-      NOTHING = ''
-      def in_autoloaded_namespace?(const_name) # careful, modifies passed in const_name!
-        begin
-          return true if LoadedFile.loaded_constant?(const_name)
-        end while const_name.sub!(/::[^:]+\Z/, NOTHING)
-        false
       end
       
       def qualified_const_defined?(const_name)
@@ -173,12 +176,12 @@ module RailsDevelopmentBoost
     end
     
     def now_loading(path)
-      @currently_loading, old_currently_loading = path, @currently_loading
+      currently_loading << path
       yield
     rescue Exception => e
-      error_loading_file(@currently_loading, e)
+      error_loading_file(currently_loading.last, e)
     ensure
-      @currently_loading = old_currently_loading
+      currently_loading.pop
     end
     
     def associate_constants_to_file(constants, file_path)
@@ -199,10 +202,10 @@ module RailsDevelopmentBoost
     
     def required_dependency(file_name)
       # Rails uses require_dependency for loading helpers, we are however dealing with the helper problem elsewhere, so we can skip them
-      return if @currently_loading && @currently_loading =~ /_controller(?:\.rb)?\Z/ && file_name =~ /_helper(?:\.rb)?\Z/
+      return if (curr_loading = currently_loading.last) && curr_loading =~ /_controller(?:\.rb)?\Z/ && file_name =~ /_helper(?:\.rb)?\Z/
       
       if full_path = ActiveSupport::Dependencies.search_for_file(file_name)
-        RequiredDependency.new(@currently_loading).related_files.each do |related_file|
+        RequiredDependency.new(curr_loading).related_files.each do |related_file|
           LoadedFile.relate_files(related_file, full_path)
         end
       end
