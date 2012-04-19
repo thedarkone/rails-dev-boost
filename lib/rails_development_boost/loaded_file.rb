@@ -128,6 +128,16 @@ module RailsDevelopmentBoost
       end
     end
     
+    def associate_to_greppable_constants # brute-force approach
+      # we don't know anything about the constants contained in the files up the currently_loading stack
+      ActiveSupport::Dependencies.currently_loading.each {|path| self.class.relate_files(path, self)}
+      add_constants(greppable_constants.select {|const_name| DependenciesPatch::Util.in_autoloaded_namespace?(const_name.dup)})
+    end
+    
+    def greppable_constants
+      File.read(@path).scan(/[A-Z][_A-Za-z0-9]*(?:::[A-Z][_A-Za-z0-9]*)*/).uniq
+    end
+    
     # consistent hashing
     def hash
       @path.hash
