@@ -155,14 +155,9 @@ module RailsDevelopmentBoost
     end
     
     def unload_modified_files!
-      log_call
-      if DependenciesPatch.async?
-        # because of the forking ruby servers (threads don't survive the forking),
-        # the Async heartbeat/init check needs to be here (instead of it being a boot time thing)
-        Async.heartbeat_check!
-      else
-        LoadedFile.unload_modified!
-      end
+      unloaded_something    = unload_modified_files_internal!
+      explicit_load_failure = clear_explicit_load_failure
+      unloaded_something || explicit_load_failure
     ensure
       async_synchronize { @module_cache = nil }
     end
@@ -241,7 +236,34 @@ module RailsDevelopmentBoost
       end
     end
     
+    def load_file_from_explicit_load(expanded_path)
+      unless LoadedFile.loaded?(expanded_path)
+        load_file(expanded_path)
+        if LoadedFile.loaded?(expanded_path) && (file = LoadedFile.for(expanded_path)).decorator_like?
+          file.associate_to_greppable_constants
+        end
+      end
+    rescue
+      @failed_explicit_load = true
+      raise
+    end
+    
   private
+    def unload_modified_files_internal!
+      log_call
+      if DependenciesPatch.async?
+        # because of the forking ruby servers (threads don't survive the forking),
+        # the Async heartbeat/init check needs to be here (instead of it being a boot time thing)
+        Async.heartbeat_check!
+      else
+        LoadedFile.unload_modified!
+      end
+    end
+    
+    def clear_explicit_load_failure
+      @failed_explicit_load.tap { @failed_explicit_load = false }
+    end
+  
     def load_file_with_constant_tracking_internal(path, args)
       result = now_loading(path) { load_file_without_constant_tracking(path, *args) }
       
