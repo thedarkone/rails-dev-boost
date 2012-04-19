@@ -9,12 +9,7 @@ module RailsDevelopmentBoost
       # force the manual #load calls for autoloadable files to go through the AS::Dep stack
       if ActiveSupport::Dependencies.in_autoload_path?(expanded_path)
         expanded_path << '.rb' unless expanded_path.ends_with?('.rb')
-        unless LoadedFile.loaded?(expanded_path)
-          ActiveSupport::Dependencies.load_file(expanded_path)
-          if LoadedFile.loaded?(expanded_path) && (file = LoadedFile.for(expanded_path)).decorator_like?
-            file.associate_to_greppable_constants
-          end
-        end
+        ActiveSupport::Dependencies.load_file_from_explicit_load(expanded_path)
       else
         super
       end
