@@ -148,7 +148,9 @@ module RailsDevelopmentBoost
     
     def unload_modified_files!
       log_call
-      LoadedFile.unload_modified!
+      unloaded_something    = LoadedFile.unload_modified!
+      explicit_load_failure = clear_explicit_load_failure
+      unloaded_something || explicit_load_failure
     ensure
       @module_cache = nil
     end
@@ -231,7 +233,23 @@ module RailsDevelopmentBoost
       end
     end
     
+    def load_file_from_explicit_load(expanded_path)
+      unless LoadedFile.loaded?(expanded_path)
+        load_file(expanded_path)
+        if LoadedFile.loaded?(expanded_path) && (file = LoadedFile.for(expanded_path)).decorator_like?
+          file.associate_to_greppable_constants
+        end
+      end
+    rescue
+      @failed_explicit_load = true
+      raise
+    end
+    
   private
+    def clear_explicit_load_failure
+      @failed_explicit_load.tap { @failed_explicit_load = false }
+    end
+  
     def unprotected_remove_constant(const_name)
       if qualified_const_defined?(const_name) && object = const_name.constantize
         handle_connected_constants(object, const_name)
