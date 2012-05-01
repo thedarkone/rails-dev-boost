@@ -9,6 +9,7 @@ module RailsDevelopmentBoost
       
       def loose!(const_name)
         @store.delete(const_name)
+        @store.delete("::#{const_name}") # constantize is sometimes weird like that
       end
     else
       def self.apply!
@@ -19,6 +20,7 @@ module RailsDevelopmentBoost
       module ClassMethods
         def loose!(const_name)
           constants.delete(const_name)
+          constants.delete("::#{const_name}") # constantize is sometimes weird like that
         end
       end
     end
