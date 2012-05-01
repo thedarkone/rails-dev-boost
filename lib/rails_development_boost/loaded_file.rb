@@ -127,10 +127,33 @@ module RailsDevelopmentBoost
     def associate_to_greppable_constants # brute-force approach
       # we don't know anything about the constants contained in the files up the currently_loading stack
       ActiveSupport::Dependencies.currently_loading.each {|path| self.class.relate_files(path, self)}
-      add_constants(greppable_constants.select {|const_name| DependenciesPatch::Util.in_autoloaded_namespace?(const_name.dup)})
+      add_constants(greppable_constants)
     end
     
+    # It is important to catch all the intermediate constants as they might be "nested" constants, that are generally not tracked by AS::Dependencies.
+    # Pathological example is as follows:
+    #
+    # File `a.rb` contains `class A; X = :x; end`. AS::Dependencies only associates the 'A' const to the `a.rb` file (ignoring the nested 'A::X'), while
+    # a decorator file `b_decorator.rb` containing `B.class_eval {A::X}` would grep and find the `A::X` const, check that indeed it is in autoloaded
+    # namespace and associate it to itself. When `b_decorator.rb` is then being unloaded it simply does `remove_constant('A::X')` while failing to trigger
+    # the unloading of `a.rb`.
     def greppable_constants
+      constants = []
+      read_greppable_constants.each do |const_name|
+        intermediates = nil
+        begin
+          if self.class.loaded_constant?(const_name)
+            constants << const_name
+            constants.concat(intermediates) if intermediates
+            break
+          end
+          (intermediates ||= []) << const_name.dup
+        end while const_name.sub!(/::[^:]+\Z/, '')
+      end
+      constants.uniq
+    end
+    
+    def read_greppable_constants
       File.read(@path).scan(/[A-Z][_A-Za-z0-9]*(?:::[A-Z][_A-Za-z0-9]*)*/).uniq
     end
     
