@@ -240,7 +240,7 @@ module RailsDevelopmentBoost
           file.associate_to_greppable_constants
         end
       end
-    rescue
+    rescue Exception
       @failed_explicit_load = true
       raise
     end
