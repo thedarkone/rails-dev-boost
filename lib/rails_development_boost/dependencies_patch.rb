@@ -364,6 +364,9 @@ module RailsDevelopmentBoost
       constants_being_removed << const_name
       begin
         yield
+      rescue NameError 
+        # NameError exceptions here will hide the real exception being raised.
+        # Just ignore them; they're not important.
       ensure
         constants_being_removed.delete(const_name)
       end
