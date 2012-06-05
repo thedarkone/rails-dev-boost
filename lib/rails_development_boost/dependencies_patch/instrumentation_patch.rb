@@ -113,6 +113,11 @@ module RailsDevelopmentBoost
         super
       end
       
+      def load_file_from_explicit_load(expanded_path)
+        boost_log('EXPLICIT_LOAD_REQUEST', expanded_path)
+        super
+      end
+      
       def boost_log(action, msg = nil)
         action, msg = msg, action unless msg
         raw_boost_log("#{ "[#{action}] " if action}#{msg}")
