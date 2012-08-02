@@ -148,9 +148,9 @@ module RailsDevelopmentBoost
     
     def unload_modified_files!
       log_call
-      unloaded_something    = LoadedFile.unload_modified!
-      explicit_load_failure = clear_explicit_load_failure
-      unloaded_something || explicit_load_failure
+      unloaded_something = LoadedFile.unload_modified!
+      load_failure       = clear_load_failure
+      unloaded_something || load_failure
     ensure
       @module_cache = nil
     end
@@ -240,14 +240,11 @@ module RailsDevelopmentBoost
           file.associate_to_greppable_constants
         end
       end
-    rescue Exception
-      @failed_explicit_load = true
-      raise
     end
     
   private
-    def clear_explicit_load_failure
-      @failed_explicit_load.tap { @failed_explicit_load = false }
+    def clear_load_failure
+      @load_failure.tap { @load_failure = false }
     end
   
     def unprotected_remove_constant(const_name)
@@ -266,6 +263,7 @@ module RailsDevelopmentBoost
   
     def error_loading_file(file_path, e)
       LoadedFile.for(file_path).stale! if LoadedFile.loaded?(file_path)
+      @load_failure = true
       raise e
     end
     
