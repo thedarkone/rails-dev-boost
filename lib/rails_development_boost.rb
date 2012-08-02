@@ -5,7 +5,7 @@ module RailsDevelopmentBoost
     config.after_initialize do
       if boost_enabled?
         # this should go into ActiveSupport.on_load(:action_pack), alas Rails doesn't provide it
-        if Rails.application.config.respond_to?(:reload_classes_only_on_change) # post fa1d9a
+        if supports_reload_classes_only_on_change? # post fa1d9a
           Rails.application.config.reload_classes_only_on_change = true
           Reloader.hook_in!
         elsif defined?(ActionDispatch::Reloader) # post 0f7c970
@@ -24,9 +24,13 @@ module RailsDevelopmentBoost
       self.class.boost_enabled?
     end
     
+    def supports_reload_classes_only_on_change?
+      Rails.application.config.respond_to?(:reload_classes_only_on_change)
+    end
+    
     initializer 'dev_boost.setup', :after => :load_active_support do |app|
       if boost_enabled?
-        [DependenciesPatch, ReferencePatch, DescendantsTrackerPatch, ObservablePatch, ReferenceCleanupPatch].each(&:apply!)
+        [DependenciesPatch, ReferencePatch, DescendantsTrackerPatch, ObservablePatch, ReferenceCleanupPatch, LoadablePatch].each(&:apply!)
         
         if defined?(AbstractController::Helpers)
           ViewHelpersPatch.apply!
@@ -40,6 +44,7 @@ module RailsDevelopmentBoost
   autoload :DependenciesPatch,       'rails_development_boost/dependencies_patch'
   autoload :DescendantsTrackerPatch, 'rails_development_boost/descendants_tracker_patch'
   autoload :LoadedFile,              'rails_development_boost/loaded_file'
+  autoload :LoadablePatch,           'rails_development_boost/loadable_patch'
   autoload :ObservablePatch,         'rails_development_boost/observable_patch'
   autoload :ReferencePatch,          'rails_development_boost/reference_patch'
   autoload :ReferenceCleanupPatch,   'rails_development_boost/reference_cleanup_patch'
