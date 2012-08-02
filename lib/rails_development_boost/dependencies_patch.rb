@@ -45,6 +45,14 @@ module RailsDevelopmentBoost
       end
     end
     
+    def self.async!
+      @async = true
+    end
+    
+    def self.async?
+      @async
+    end
+    
     def self.applied?
       ActiveSupport::Dependencies < self
     end
@@ -147,12 +155,11 @@ module RailsDevelopmentBoost
     end
     
     def unload_modified_files!
-      log_call
-      unloaded_something = LoadedFile.unload_modified!
+      unloaded_something = unload_modified_files_internal!
       load_failure       = clear_load_failure
       unloaded_something || load_failure
     ensure
-      @module_cache = nil
+      async_synchronize { @module_cache = nil }
     end
     
     def remove_explicitely_unloadable_constants!
@@ -164,17 +171,11 @@ module RailsDevelopmentBoost
     end
     
     # Augmented `load_file'.
-    def load_file_with_constant_tracking(path, *args, &block)
-      result = now_loading(path) { load_file_without_constant_tracking(path, *args, &block) }
-      
-      unless load_once_path?(path)
-        new_constants = autoloaded_constants - LoadedFile.loaded_constants
-      
-        # Associate newly loaded constants to the file just loaded
-        associate_constants_to_file(new_constants, path)
+    def load_file_with_constant_tracking(path, *args)
+      async_synchronize do
+        @module_cache = nil # nuking the module_cache helps to avoid any stale-class issues when the async mode is used in a console session
+        load_file_with_constant_tracking_internal(path, args)
       end
-
-      result
     end
     
     def now_loading(path)
@@ -196,9 +197,11 @@ module RailsDevelopmentBoost
     
     # Augmented `remove_constant'.
     def remove_constant_with_handling_of_connections(const_name)
-      module_cache # make sure module_cache has been created
-      prevent_further_removal_of(const_name) do
-        unprotected_remove_constant(const_name)
+      async_synchronize do
+        module_cache # make sure module_cache has been created
+        prevent_further_removal_of(const_name) do
+          unprotected_remove_constant(const_name)
+        end
       end
     end
     
@@ -243,8 +246,40 @@ module RailsDevelopmentBoost
     end
     
   private
+    def unload_modified_files_internal!
+      log_call
+      if DependenciesPatch.async?
+        # because of the forking ruby servers (threads don't survive the forking),
+        # the Async heartbeat/init check needs to be here (instead of it being a boot time thing)
+        Async.heartbeat_check!
+      else
+        LoadedFile.unload_modified!
+      end
+    end
+  
     def clear_load_failure
       @load_failure.tap { @load_failure = false }
+    end
+
+    def load_file_with_constant_tracking_internal(path, args)
+      result = now_loading(path) { load_file_without_constant_tracking(path, *args) }
+      
+      unless load_once_path?(path)
+        new_constants = autoloaded_constants - LoadedFile.loaded_constants
+      
+        # Associate newly loaded constants to the file just loaded
+        associate_constants_to_file(new_constants, path)
+      end
+
+      result
+    end
+  
+    def async_synchronize
+      if DependenciesPatch.async?
+        Async.synchronize { yield }
+      else
+        yield
+      end
     end
   
     def unprotected_remove_constant(const_name)

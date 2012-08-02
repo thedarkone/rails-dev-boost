@@ -11,8 +11,13 @@ module RailsDevelopmentBoost
         module ClassMethods
           def included(klass)
             (public_instance_methods(false) + private_instance_methods(false) + protected_instance_methods(false)).each do |method|
-              if m = method.to_s.match(/(.+)_with_(.+)/)
-                klass.alias_method_chain m[1], m[2]
+              if m = method.to_s.match(/\A(.+)_with_(.+)\Z/)
+                meth_name, extension = m[1], m[2]
+                extension.sub!(/[?!=]\Z/) do |modifier|
+                  meth_name << modifier
+                  ''
+                end
+                klass.alias_method_chain meth_name, extension
               end
             end
 
@@ -57,6 +62,13 @@ module RailsDevelopmentBoost
         module ClassMethods
           include Instrumenter
           
+          def unload_modified_with_instrumentation!
+            boost_log('--- START ---')
+            unload_modified_without_instrumentation!.tap do
+              boost_log('--- END ---')
+            end
+          end
+          
           def unload_containing_file_with_instrumentation(const_name, file)
             boost_log('UNLOAD_CONTAINING_FILE', "#{const_name} -> #{file.boost_inspect}")
             unload_containing_file_without_instrumentation(const_name, file)
@@ -88,13 +100,6 @@ module RailsDevelopmentBoost
       
       def self.applied?
         ActiveSupport::Dependencies.singleton_class.include?(self)
-      end
-      
-      def unload_modified_files!
-        boost_log('--- START ---')
-        super.tap do
-          boost_log('--- END ---')
-        end
       end
       
       def load_file_without_constant_tracking(path, *args)

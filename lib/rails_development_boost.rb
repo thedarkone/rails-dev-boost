@@ -41,6 +41,7 @@ module RailsDevelopmentBoost
     end
   end
   
+  autoload :Async,                   'rails_development_boost/async'
   autoload :DependenciesPatch,       'rails_development_boost/dependencies_patch'
   autoload :DescendantsTrackerPatch, 'rails_development_boost/descendants_tracker_patch'
   autoload :LoadedFile,              'rails_development_boost/loaded_file'
@@ -54,5 +55,9 @@ module RailsDevelopmentBoost
   
   def self.debug!
     DependenciesPatch.debug!
+  end
+  
+  def self.async!
+    DependenciesPatch.async!
   end
 end
