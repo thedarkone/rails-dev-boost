@@ -87,8 +87,9 @@ module RailsDevelopmentBoost
       
       def unload_modified_files!
         boost_log('--- START ---')
-        super
-        boost_log('--- END ---')
+        super.tap do
+          boost_log('--- END ---')
+        end
       end
       
       def load_file_without_constant_tracking(path, *args)
