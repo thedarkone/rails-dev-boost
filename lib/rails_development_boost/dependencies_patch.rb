@@ -289,22 +289,27 @@ module RailsDevelopmentBoost
     def remove_child_module_constants(object, object_const_name)
       object.constants.each do |child_const_name|
         # we only care about "namespace" constants (classes/modules)
-        if local_const_defined?(object, child_const_name)
-          child_const =
-            begin
-              object.const_get(child_const_name)
-            rescue NameError
-            end
-          if child_const.kind_of?(Module)
-            # make sure this is not "const alias" created like this: module Y; end; module A; X = Y; end, const A::X is not a proper "namespacing module",
-            # but only an alias to Y module
-            if (full_child_const_name = child_const._mod_name) == "#{object_const_name}::#{child_const_name}"
-              remove_child_module_constant(object, full_child_const_name)
-            end
+        if (child_const = get_child_const(object, child_const_name)).kind_of?(Module)
+          # make sure this is not "const alias" created like this: module Y; end; module A; X = Y; end, const A::X is not a proper "namespacing module",
+          # but only an alias to Y module
+          if (full_child_const_name = child_const._mod_name) == "#{object_const_name}::#{child_const_name}"
+            remove_child_module_constant(object, full_child_const_name)
           end
         end
       end
-    end    
+    end
+    
+    def get_child_const(object, child_const_name)
+      if local_const_defined?(object, child_const_name)
+        begin
+          object.const_get(child_const_name)
+        rescue NameError
+          # Apparently even though we get a list of constants through the native Module#constants and do a local_const_defined? check the const_get
+          # can still fail with a NameError (const undefined etc.)
+          # See https://github.com/thedarkone/rails-dev-boost/pull/33 for more details.
+        end
+      end
+    end
     
     def remove_child_module_constant(parent_object, full_child_const_name)
       remove_constant(full_child_const_name)
