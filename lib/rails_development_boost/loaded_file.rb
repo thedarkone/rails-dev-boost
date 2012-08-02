@@ -6,9 +6,18 @@ module RailsDevelopmentBoost
       end
       
       def unload_modified!
+        each_file_unload_if_changed {|file| file.changed?}
+      end
+      
+      def each_file_unload_if_changed
+        unloaded_something = false
         values.each do |file|
-          unload_modified_file(file) if file.changed?
+          if yield(file)
+            unload_modified_file(file)
+            unloaded_something = true
+          end
         end
+        unloaded_something
       end
       
       def unload_modified_file(file)
