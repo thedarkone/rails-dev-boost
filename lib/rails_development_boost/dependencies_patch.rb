@@ -289,15 +289,22 @@ module RailsDevelopmentBoost
     def remove_child_module_constants(object, object_const_name)
       object.constants.each do |child_const_name|
         # we only care about "namespace" constants (classes/modules)
-        if local_const_defined?(object, child_const_name) && (child_const = object.const_get(child_const_name)).kind_of?(Module)
-          # make sure this is not "const alias" created like this: module Y; end; module A; X = Y; end, const A::X is not a proper "namespacing module",
-          # but only an alias to Y module
-          if (full_child_const_name = child_const._mod_name) == "#{object_const_name}::#{child_const_name}"
-            remove_child_module_constant(object, full_child_const_name)
+        if local_const_defined?(object, child_const_name)
+          child_const =
+            begin
+              object.const_get(child_const_name)
+            rescue NameError
+            end
+          if child_const.kind_of?(Module)
+            # make sure this is not "const alias" created like this: module Y; end; module A; X = Y; end, const A::X is not a proper "namespacing module",
+            # but only an alias to Y module
+            if (full_child_const_name = child_const._mod_name) == "#{object_const_name}::#{child_const_name}"
+              remove_child_module_constant(object, full_child_const_name)
+            end
           end
         end
       end
-    end
+    end    
     
     def remove_child_module_constant(parent_object, full_child_const_name)
       remove_constant(full_child_const_name)
