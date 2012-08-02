@@ -62,6 +62,13 @@ module RailsDevelopmentBoost
         module ClassMethods
           include Instrumenter
           
+          def unload_modified_with_instrumentation!
+            boost_log('--- START ---')
+            unload_modified_without_instrumentation!.tap do
+              boost_log('--- END ---')
+            end
+          end
+          
           def unload_containing_file_with_instrumentation(const_name, file)
             boost_log('UNLOAD_CONTAINING_FILE', "#{const_name} -> #{file.boost_inspect}")
             unload_containing_file_without_instrumentation(const_name, file)
@@ -88,12 +95,6 @@ module RailsDevelopmentBoost
       
       def self.applied?
         ActiveSupport::Dependencies.singleton_class.include?(self)
-      end
-      
-      def unload_modified_files!
-        boost_log('--- START ---')
-        super
-        boost_log('--- END ---')
       end
       
       def load_file_without_constant_tracking(path, *args)
