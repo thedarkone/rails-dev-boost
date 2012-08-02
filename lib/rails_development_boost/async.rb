@@ -31,7 +31,7 @@ module RailsDevelopmentBoost
       @reactor = Reactor.new
       @reactor.watch(ActiveSupport::Dependencies.autoload_paths) {|changed_dirs| unload_affected(changed_dirs)}
       @reactor.start!
-      @unloaded_something ||= LoadedFile.unload_modified! # don't miss-out on any of the file changes as the async thread hasn't been started as of yet
+      self.unloaded_something = LoadedFile.unload_modified! # don't miss-out on any of the file changes as the async thread hasn't been started as of yet
     end
     
     def re_raise_unload_error_if_any
@@ -45,12 +45,16 @@ module RailsDevelopmentBoost
       changed_dirs = changed_dirs.map {|changed_dir| File.expand_path(changed_dir).chomp(File::SEPARATOR)}
       
       synchronize do
-        @unloaded_something ||= LoadedFile::LOADED.each_file_unload_if_changed do |file|
+        self.unloaded_something = LoadedFile::LOADED.each_file_unload_if_changed do |file|
           changed_dirs.any? {|changed_dir| file.path.starts_with?(changed_dir)} && file.changed?
         end
       end
     rescue Exception => e
       @unload_error ||= e
+    end
+    
+    def unloaded_something=(value)
+      @unloaded_something ||= value
     end
     
     class Reactor
