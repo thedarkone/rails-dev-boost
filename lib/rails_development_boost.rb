@@ -16,15 +16,13 @@ module RailsDevelopmentBoost
       end
     end
     
+    delegate :boost_enabled?, :supports_reload_classes_only_on_change?, :to => 'self.class'
+    
     def self.boost_enabled?
       !$rails_rake_task && (Rails.env.development? || (config.respond_to?(:soft_reload) && config.soft_reload))
     end
     
-    def boost_enabled?
-      self.class.boost_enabled?
-    end
-    
-    def supports_reload_classes_only_on_change?
+    def self.supports_reload_classes_only_on_change?
       Rails.application.config.respond_to?(:reload_classes_only_on_change)
     end
     
