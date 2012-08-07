@@ -24,7 +24,7 @@ module RailsDevelopmentBoost
       self.class.boost_enabled?
     end
     
-    def supports_reload_classes_only_on_change?
+    def self.supports_reload_classes_only_on_change?
       Rails.application.config.respond_to?(:reload_classes_only_on_change)
     end
     
