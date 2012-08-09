@@ -232,6 +232,7 @@ module RailsDevelopmentBoost
     
     def in_autoload_path?(expanded_file_path)
       autoload_paths.any? do |autoload_path|
+        autoload_path = autoload_path.to_s # handle Pathnames
         expanded_file_path.starts_with?(autoload_path.ends_with?('/') ? autoload_path : "#{autoload_path}/")
       end
     end
