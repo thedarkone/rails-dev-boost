@@ -46,7 +46,7 @@ module RailsDevelopmentBoost
     end
     
     def self.async!
-      @async = true
+      @async = true unless defined?(IRB) || defined?(Pry) # disable async mode in rails console as it might be confusing
     end
     
     def self.async?
