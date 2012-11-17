@@ -3,6 +3,20 @@ require 'monitor'
 
 module RailsDevelopmentBoost
   module Async
+    class Middleware
+      def initialize(app)
+        @app = app
+      end
+      
+      def call(env)
+        if DependenciesPatch.applied? && DependenciesPatch.async?
+          Async.synchronize { @app.call(env) }
+        else
+          @app.call(env)
+        end
+      end
+    end
+    
     extend self
     
     MONITOR = Monitor.new

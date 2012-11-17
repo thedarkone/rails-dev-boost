@@ -35,6 +35,8 @@ module RailsDevelopmentBoost
         else
           ActiveSupport.on_load(:action_controller) { ViewHelpersPatch.apply! }
         end
+        
+        app.config.middleware.use 'RailsDevelopmentBoost::Async::Middleware'
       end
     end
   end
