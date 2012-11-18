@@ -101,9 +101,7 @@ module RailsDevelopmentBoost
       changed_dirs = changed_dirs.map {|changed_dir| File.expand_path(changed_dir).chomp(File::SEPARATOR)}
       
       synchronize do
-        self.unloaded_something = LoadedFile::LOADED.each_file_unload_if_changed do |file|
-          changed_dirs.any? {|changed_dir| file.path.starts_with?(changed_dir)} && file.changed?
-        end
+        self.unloaded_something = LoadedFile::LOADED.unload_modified!(changed_dirs)
       end
     rescue Exception => e
       @unload_error ||= e
