@@ -279,6 +279,15 @@ class Blog < ActiveRecord::Base
 end
 ```
 
+## Asynchronous mode
+
+By default `rails-dev-boost` now runs in an "async" mode, watching and unloading modified files in a separate thread. This allows for an even faster development mode because there is no longer a need to do a `File.mtime` check of all the `.rb` files at the beginning of the request.
+
+To disable the async mode put the following code in a Rails initializer file (these are found in `config/initializers` directory):
+```ruby
+RailsDevelopmentBoost.async = false
+```
+
 ## FAQ
 
 ### Q: Since the plugin uses its special "unloading mechanism" won't everything break down?
