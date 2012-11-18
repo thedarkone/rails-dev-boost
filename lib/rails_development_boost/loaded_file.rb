@@ -34,7 +34,9 @@ module RailsDevelopmentBoost
       end
       
       def constants
-        values.map(&:constants).flatten
+        arr = []
+        each_value {|file| arr.concat(file.constants)}
+        arr
       end
       
       def stored?(file)
