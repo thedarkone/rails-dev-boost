@@ -45,12 +45,16 @@ module RailsDevelopmentBoost
       end
     end
     
-    def self.async!
-      @async = true unless defined?(IRB) || defined?(Pry) # disable async mode in rails console as it might be confusing
+    def self.async=(new_value)
+      @async = Async.process_new_async_value(new_value)
     end
     
     def self.async?
       @async
+    end
+    
+    def self.enable_async_mode_by_default!
+      Async.enable_by_default!(defined?(@async))
     end
     
     def self.applied?

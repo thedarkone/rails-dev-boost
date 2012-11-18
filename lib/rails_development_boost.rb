@@ -13,6 +13,8 @@ module RailsDevelopmentBoost
         else
           ActionDispatch::Callbacks.before(:prepend => true)    { ActiveSupport::Dependencies.unload_modified_files! }
         end
+        
+        DependenciesPatch.enable_async_mode_by_default!
       end
     end
     
@@ -57,7 +59,7 @@ module RailsDevelopmentBoost
     DependenciesPatch.debug!
   end
   
-  def self.async!
-    DependenciesPatch.async!
+  def self.async=(new_value)
+    DependenciesPatch.async = new_value
   end
 end
