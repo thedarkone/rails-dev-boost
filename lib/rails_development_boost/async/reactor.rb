@@ -1,5 +1,6 @@
 require 'listen'
 require 'thread'
+require 'set'
 
 module RailsDevelopmentBoost
   module Async
@@ -26,11 +27,14 @@ module RailsDevelopmentBoost
       end
       
       class Base
-        delegate :alive?, :to => '@thread'
-        delegate :watch,  :to => '@watcher'
-
         def initialize
-          @watcher = create_watcher
+          @watcher     = create_watcher
+          @directories = Set.new
+        end
+        
+        def watch(directories, &block)
+          @directories.merge(directories)
+          watch_internal(directories, &block)
         end
 
         def start!
@@ -42,7 +46,15 @@ module RailsDevelopmentBoost
           stop_thread
         end
         
+        def alive_and_watching?(directories)
+          @thread.alive? && directories.all? {|directory| @directories.include?(directory)}
+        end
+        
         private
+        def watch_internal(directories, &block)
+          @watcher.watch(directories, &block)
+        end
+        
         def stop_thread
           @thread.join if @thread
         end
@@ -83,7 +95,8 @@ module RailsDevelopmentBoost
           for information on how to solve this issue.
         EOS
         
-        def watch(directories)
+        private
+        def watch_internal(directories)
           directories.each do |directory|
             @watcher.watch(directory, *EVENTS) do |event|
               yield [File.dirname(event.absolute_name)] unless root?(event) || file_event_on_a_dir?(event)
@@ -93,7 +106,6 @@ module RailsDevelopmentBoost
           abort(INOTIFY_LIMIT_MESSAGE)
         end
         
-        private
         def root?(event) # Event on root directory
           event.name.empty? # same as event.name == ""
         end
@@ -118,7 +130,8 @@ module RailsDevelopmentBoost
       end
       
       class Windows < Base
-        def watch(directories)
+        private
+        def watch_internal(directories)
           directories.each do |directory|
             @watcher.watch_recursively(directory) do |change|
               yield [File.dirname(change.path)]
@@ -126,7 +139,6 @@ module RailsDevelopmentBoost
           end
         end
         
-        private
         def create_watcher
           WDM::Monitor.new
         end

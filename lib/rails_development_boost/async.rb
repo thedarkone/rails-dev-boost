@@ -23,7 +23,7 @@ module RailsDevelopmentBoost
     
     def heartbeat_check!
       if @reactor
-        unless @reactor.alive?
+        unless @reactor.alive_and_watching?(ActiveSupport::Dependencies.autoload_paths)
           @reactor.stop
           @reactor = nil
           start!
