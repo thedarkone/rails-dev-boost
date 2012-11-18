@@ -159,11 +159,15 @@ module RailsDevelopmentBoost
     end
     
     def unload_modified_files!
-      unloaded_something = unload_modified_files_internal!
-      load_failure       = clear_load_failure
-      unloaded_something || load_failure
-    ensure
-      async_synchronize { @module_cache = nil }
+      async_synchronize do
+        begin
+          unloaded_something = unload_modified_files_internal!
+          load_failure       = clear_load_failure
+          unloaded_something || load_failure
+        ensure
+          @module_cache = nil
+        end
+      end
     end
     
     def remove_explicitely_unloadable_constants!
