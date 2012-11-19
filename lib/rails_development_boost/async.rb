@@ -54,7 +54,7 @@ module RailsDevelopmentBoost
           end
           msg << "To get rid of this message disable the rails-dev-boost's async mode by putting the following code " + 
                  "in a Rails initializer file (these are found in config/initializers directory):\n" +
-                 "\n\tRailsDevelopmentBoost.async = false\n\n"
+                 "\n\tRailsDevelopmentBoost.async = false if defined?(RailsDevelopmentBoost)\n\n"
           async_warning(msg)
           new_value = false
         elsif in_console?

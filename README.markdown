@@ -29,7 +29,7 @@ I'm very interested in making the plugin as robust as possible and will work wit
 
 There is built-in debug mode in `rails-dev-boost` that can be enabled by putting this line a Rails initializer file:
 
-    RailsDevelopmentBoost.debug!
+    RailsDevelopmentBoost.debug! if defined?(RailsDevelopmentBoost)
 
 After restarting your server `rails-dev-boost` will start to spewing detailed tracing information about its actions into your `development.log` file.
 
