@@ -1,18 +1,32 @@
+require 'set'
+
 module RailsDevelopmentBoost
   class LoadedFile
     class Files < Hash
       def initialize(*args)
+        @directories = {}
         super {|hash, file_path| hash[file_path] = LoadedFile.new(file_path)}
       end
       
-      def unload_modified!
-        each_file_unload_if_changed {|file| file.changed?}
+      def []=(file_path, loaded_file)
+        (@directories[loaded_file.dirname] ||= Set.new) << loaded_file
+        super
       end
       
-      def each_file_unload_if_changed
+      def delete(file_path)
+        if loaded_file = super
+          dirname = loaded_file.dirname
+          if @directories[dirname].delete(loaded_file).empty?
+            @directories.delete(dirname)
+          end
+        end
+        loaded_file
+      end
+      
+      def unload_modified!(filter_directories = nil)
         unloaded_something = false
-        values.each do |file|
-          if yield(file)
+        find_files_in(filter_directories).each do |file|
+          if file.changed?
             unload_modified_file(file)
             unloaded_something = true
           end
@@ -23,6 +37,18 @@ module RailsDevelopmentBoost
           end
         end
         unloaded_something
+      end
+      
+      def find_files_in(filter_directories = nil)
+        if filter_directories
+          arr = []
+          @directories.each_pair do |dirname, files|
+            arr.concat(files.to_a) if filter_directories.any? {|filter_directory| dirname.starts_with?(filter_directory)}
+          end
+          arr
+        else
+          values
+        end
       end
       
       def unload_modified_file(file)
@@ -110,6 +136,10 @@ module RailsDevelopmentBoost
     def add_constants(new_constants)
       new_constants.each {|new_constant| CONSTANTS_TO_FILES.associate(new_constant, self)}
       @constants |= new_constants
+    end
+    
+    def dirname
+      File.dirname(@path)
     end
     
     # "decorator" files are popular with certain Rails frameworks (spree/refinerycms etc.) they don't define their own constants, instead

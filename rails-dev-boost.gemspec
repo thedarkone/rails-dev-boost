@@ -16,7 +16,8 @@ Gem::Specification.new do |s|
   s.summary = %q{Speeds up Rails development mode}
   s.test_files = Dir.glob('test/**/*')
   
-  s.add_dependency 'rails', '>= 3.0'
+  s.add_dependency 'rails',  '>= 3.0'
+  s.add_dependency 'listen', '>= 0.5'
 
   if s.respond_to? :specification_version then
     current_version = Gem::Specification::CURRENT_SPECIFICATION_VERSION

@@ -45,12 +45,16 @@ module RailsDevelopmentBoost
       end
     end
     
-    def self.async!
-      @async = true unless defined?(IRB) || defined?(Pry) # disable async mode in rails console as it might be confusing
+    def self.async=(new_value)
+      @async = Async.process_new_async_value(new_value)
     end
     
     def self.async?
       @async
+    end
+    
+    def self.enable_async_mode_by_default!
+      Async.enable_by_default!(defined?(@async))
     end
     
     def self.applied?
@@ -155,11 +159,15 @@ module RailsDevelopmentBoost
     end
     
     def unload_modified_files!
-      unloaded_something = unload_modified_files_internal!
-      load_failure       = clear_load_failure
-      unloaded_something || load_failure
-    ensure
-      async_synchronize { @module_cache = nil }
+      async_synchronize do
+        begin
+          unloaded_something = unload_modified_files_internal!
+          load_failure       = clear_load_failure
+          unloaded_something || load_failure
+        ensure
+          @module_cache = nil
+        end
+      end
     end
     
     def remove_explicitely_unloadable_constants!
