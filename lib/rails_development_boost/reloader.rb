@@ -43,7 +43,7 @@ module RailsDevelopmentBoost
       if (dir_glob = reloader.instance_variable_get(:@glob)).kind_of?(String)
         autoload_paths = ActiveSupport::Dependencies.autoload_paths
         dir_glob.sub(/\A\{/, '').sub(/\}\Z/, '').split(',').all? do |glob_path|
-          autoload_paths.any? {|autoload_path| glob_path.starts_with?(autoload_path)}
+          autoload_paths.any? {|autoload_path| glob_path.starts_with?(autoload_path.to_s)}
         end
       end
     end
