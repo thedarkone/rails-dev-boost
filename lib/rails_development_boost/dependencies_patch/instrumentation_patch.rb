@@ -164,7 +164,7 @@ module RailsDevelopmentBoost
       end
       
       def raw_boost_log(msg)
-        Rails.logger.info("[DEV-BOOST] #{"\t" * (@removal_nesting || 0)}#{msg}")
+        Rails.logger.info("[DEV-BOOST] #{"  " * (@removal_nesting || 0)}#{msg}")
       end
     end
   end
