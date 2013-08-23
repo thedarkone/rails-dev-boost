@@ -71,9 +71,6 @@ module RailsDevelopmentBoost
     
     autoload :InstrumentationPatch, 'rails_development_boost/dependencies_patch/instrumentation_patch'
   
-    mattr_accessor :constants_being_removed
-    self.constants_being_removed = []
-    
     mattr_accessor :explicit_dependencies
     self.explicit_dependencies = {}
     
@@ -166,15 +163,49 @@ module RailsDevelopmentBoost
       end
     end
     
+    class ConstantsHeap < Array
+      NAMESPACE_SEPARATOR = '::'
+      
+      def initialize(*args)
+        super
+        @seen = Set.new
+      end
+      
+      def add_const?(const_name, force_insert = false)
+        if @seen.add?(const_name) || force_insert
+          (self[const_name.count(NAMESPACE_SEPARATOR)] ||= []) << const_name
+          true
+        else
+          false
+        end
+      end
+      
+      def pop_next_const
+        reverse_each do |slot|
+          if const_name = slot.try(:pop)
+            return const_name
+          end
+        end
+        nil
+      end
+      
+      def seen?(const_name)
+        @seen.include?(const_name)
+      end
+      
+      def clear_seen
+        @seen.clear
+      end
+    end
+    
+    mattr_accessor :constants_to_remove
+    self.constants_to_remove = ConstantsHeap.new
+    
     def unload_modified_files!
       async_synchronize do
-        begin
-          unloaded_something = unload_modified_files_internal!
-          load_failure       = clear_load_failure
-          unloaded_something || load_failure
-        ensure
-          @module_cache = nil
-        end
+        unloaded_something = unload_modified_files_internal!
+        load_failure       = clear_load_failure
+        unloaded_something || load_failure
       end
     end
     
@@ -189,7 +220,10 @@ module RailsDevelopmentBoost
     # Augmented `load_file'.
     def load_file_with_constant_tracking(path, *args)
       async_synchronize do
-        @module_cache = nil # nuking the module_cache helps to avoid any stale-class issues when the async mode is used in a console session
+        if @module_cache
+          @module_cache = nil
+          constants_to_remove.clear_seen
+        end
         load_file_with_constant_tracking_internal(path, args)
       end
     end
@@ -211,13 +245,32 @@ module RailsDevelopmentBoost
       LoadedFile.for(file_path).add_constants(constants)
     end
     
+    def schedule_const_for_unloading(const_name)
+      if constants_to_remove.add_const?(const_name)
+        if qualified_const_defined?(const_name) && object = const_name.constantize
+          @module_cache ||= ModuleCache.new # make sure module_cache has been created
+          schedule_dependent_constants_for_removal(const_name, object)
+        end
+        true
+      end
+    end
+    
+    def process_consts_scheduled_for_removal
+      unless @now_removing_const
+        @now_removing_const = true
+        begin
+          process_consts_scheduled_for_removal_internal
+        ensure
+          @now_removing_const = nil
+        end
+      end
+    end
+    
     # Augmented `remove_constant'.
     def remove_constant_with_handling_of_connections(const_name)
       async_synchronize do
-        module_cache # make sure module_cache has been created
-        prevent_further_removal_of(const_name) do
-          unprotected_remove_constant(const_name)
-        end
+        schedule_const_for_unloading(const_name)
+        process_consts_scheduled_for_removal
       end
     end
     
@@ -263,6 +316,20 @@ module RailsDevelopmentBoost
     end
     
   private
+    def process_consts_scheduled_for_removal_internal
+      heap   = constants_to_remove
+      result = nil
+      while const_to_remove = heap.pop_next_const
+        begin
+          result = unprotected_remove_constant(const_to_remove, qualified_const_defined?(const_to_remove) && const_to_remove.constantize)
+        rescue Exception
+          heap.add_const?(const_to_remove, true)
+          raise
+        end
+      end
+      result
+    end
+  
     def unload_modified_files_internal!
       log_call
       if DependenciesPatch.async?
@@ -298,16 +365,17 @@ module RailsDevelopmentBoost
         yield
       end
     end
-  
-    def unprotected_remove_constant(const_name)
-      if qualified_const_defined?(const_name) && object = const_name.constantize
-        handle_connected_constants(object, const_name)
-        LoadedFile.unload_files_with_const!(const_name)
-        if object.kind_of?(Module)
-          remove_parent_modules_if_autoloaded(object)
-          remove_child_module_constants(object, const_name)
-        end
+    
+    def schedule_dependent_constants_for_removal(const_name, object)
+      handle_connected_constants(object, const_name)
+      LoadedFile.schedule_for_unloading_files_with_const!(const_name)
+      if object.kind_of?(Module)
+        remove_parent_modules_if_autoloaded(object)
+        remove_child_module_constants(object, const_name)
       end
+    end
+  
+    def unprotected_remove_constant(const_name, object)
       result = remove_constant_without_handling_of_connections(const_name)
       clear_tracks_of_removed_const(const_name, object)
       result
@@ -321,11 +389,12 @@ module RailsDevelopmentBoost
     
     def handle_connected_constants(object, const_name)
       return unless Module === object && qualified_const_defined?(const_name)
+      remove_nested_constants(const_name)
       remove_explicit_dependencies_of(const_name)
       remove_dependent_modules(object)
+      # TODO move these into the cleanup phase
       update_activerecord_related_references(object)
       update_mongoid_related_references(object)
-      remove_nested_constants(const_name)
     end
     
     def remove_nested_constants(const_name)
@@ -333,7 +402,7 @@ module RailsDevelopmentBoost
     end
     
     def remove_nested_constant(parent_const, child_const)
-      remove_constant(child_const)
+      schedule_const_for_unloading(child_const)
     end
     
     # AS::Dependencies doesn't track same-file nested constants, so we need to look out for them on our own.
@@ -355,7 +424,7 @@ module RailsDevelopmentBoost
     end
     
     def remove_autoloaded_parent_module(initial_object, parent_object)
-      remove_constant(parent_object._mod_name)
+      schedule_const_for_unloading(parent_object._mod_name)
     end
     
     def autoloaded_object?(object) # faster than going through Dependencies.autoloaded?
@@ -389,7 +458,7 @@ module RailsDevelopmentBoost
     end
     
     def remove_child_module_constant(parent_object, full_child_const_name)
-      remove_constant(full_child_const_name)
+      schedule_const_for_unloading(full_child_const_name)
     end
     
     def remove_explicit_dependencies_of(const_name)
@@ -401,7 +470,7 @@ module RailsDevelopmentBoost
     end
     
     def remove_explicit_dependency(const_name, depending_const)
-      remove_constant(depending_const)
+      schedule_const_for_unloading(depending_const)
     end
     
     def clear_tracks_of_removed_const(const_name, object = nil)
@@ -411,11 +480,11 @@ module RailsDevelopmentBoost
     end
     
     def remove_dependent_modules(mod)
-      module_cache.each_dependent_on(mod) {|other| remove_dependent_constant(mod, other)}
+      @module_cache.each_dependent_on(mod) {|other| remove_dependent_constant(mod, other)}
     end
     
     def remove_dependent_constant(original_module, dependent_module)
-      remove_constant(dependent_module._mod_name)
+      schedule_const_for_unloading(dependent_module._mod_name)
     end
     
     AR_REFLECTION_CACHES = [:@klass]
@@ -435,10 +504,10 @@ module RailsDevelopmentBoost
     def update_mongoid_related_references(klass)
       if defined?(Mongoid::Document) && klass < Mongoid::Document
         while (superclass = Util.first_non_anonymous_superclass(superclass || klass)) != Object && superclass < Mongoid::Document
-          remove_constant(superclass._mod_name) # this is necessary to nuke the @_types caches
+          schedule_const_for_unloading(superclass._mod_name) # this is necessary to nuke the @_types caches
         end
         
-        module_cache.each_dependent_on(Mongoid::Document) do |model|
+        @module_cache.each_dependent_on(Mongoid::Document) do |model|
           clean_up_relation_caches(model.relations, klass, MONGOID_RELATION_CACHES)
         end
       end
@@ -449,21 +518,6 @@ module RailsDevelopmentBoost
         ivar_names.each do |ivar_name|
           relation.instance_variable_set(ivar_name, nil) if relation.instance_variable_get(ivar_name) == klass
         end
-      end
-    end
-    
-    def module_cache
-      @module_cache ||= ModuleCache.new
-    end
-
-    def prevent_further_removal_of(const_name)
-      return if constants_being_removed.include?(const_name)
-      
-      constants_being_removed << const_name
-      begin
-        yield
-      ensure
-        constants_being_removed.delete(const_name)
       end
     end
   end

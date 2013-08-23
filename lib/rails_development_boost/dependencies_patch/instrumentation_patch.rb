@@ -2,7 +2,7 @@ module RailsDevelopmentBoost
   module DependenciesPatch
     module InstrumentationPatch
       module Instrumenter
-        delegate :boost_log, :to => 'ActiveSupport::Dependencies'
+        delegate :boost_log, :boost_log_nested, :boost_log_schedule_const_removal, :to => 'ActiveSupport::Dependencies'
         
         def self.included(mod)
           mod.extend(ClassMethods)
@@ -38,9 +38,14 @@ module RailsDevelopmentBoost
           add_constants_without_instrumentation(new_constants)
         end
         
-        def unload_dependent_file_with_instrumentation(dependent_file)
-          boost_log('UNLOAD_DEPENDENT', "#{boost_inspect}: #{dependent_file.boost_inspect}")
-          unload_dependent_file_without_instrumentation(dependent_file)
+        def dependent_file_schedule_for_unloading_with_instrumentation!(dependent_file)
+          boost_log('SCHEDULE_DEPENDENT', "#{boost_inspect}: #{dependent_file.boost_inspect}")
+          dependent_file_schedule_for_unloading_without_instrumentation!(dependent_file)
+        end
+        
+        def schedule_const_for_unloading_with_instrumentation(const_name)
+          boost_log_schedule_const_removal('SCHEDULE_REMOVAL', const_name, const_name)
+          schedule_const_for_unloading_without_instrumentation(const_name)
         end
 
       private
@@ -69,9 +74,9 @@ module RailsDevelopmentBoost
             end
           end
           
-          def unload_containing_file_with_instrumentation(const_name, file)
-            boost_log('UNLOAD_CONTAINING_FILE', "#{const_name} -> #{file.boost_inspect}")
-            unload_containing_file_without_instrumentation(const_name, file)
+          def schedule_containing_file_with_instrumentation(const_name, file)
+            boost_log('SCHEDULE_CONTAINING_FILE', "#{const_name} -> #{file.boost_inspect}")
+            schedule_containing_file_without_instrumentation(const_name, file)
           end
         end
       end
@@ -79,14 +84,14 @@ module RailsDevelopmentBoost
       module Files
         include Instrumenter
         
-        def unload_modified_file_with_instrumentation(file)
+        def schedule_modified_file_with_instrumentation(file)
           boost_log('CHANGED', "#{file.boost_inspect}")
-          unload_modified_file_without_instrumentation(file)
+          boost_log_nested { schedule_modified_file_without_instrumentation(file) }
         end
         
-        def unload_decorator_file_with_instrumentation(file)
-          boost_log('UNLOAD_DECORATOR_FILE', "#{file.boost_inspect}")
-          unload_decorator_file_without_instrumentation(file)
+        def schedule_decorator_file_with_instrumentation(file)
+          boost_log('SCHEDULE_DECORATOR_FILE', "#{file.boost_inspect}")
+          schedule_decorator_file_without_instrumentation(file)
         end
       end
       
@@ -123,13 +128,21 @@ module RailsDevelopmentBoost
         raw_boost_log("#{ "[#{action}] " if action}#{msg}")
       end
       
-      private
-      def unprotected_remove_constant(const_name)
-        boost_log('REMOVING', const_name)
+      def boost_log_schedule_const_removal(action, msg, const_name)
+        action = "#{action} | #{ActiveSupport::Dependencies.constants_to_remove.seen?(const_name) ? 'SKIP' : 'SCHEDULED'}"
+        boost_log(action, msg)
+      end
+      
+      def boost_log_nested
         @removal_nesting = (@removal_nesting || 0) + 1
-        super
+        yield
       ensure
         @removal_nesting -= 1
+      end
+      
+      private
+      def schedule_dependent_constants_for_removal(const_name, object)
+        boost_log_nested { super }
       end
       
       def error_loading_file(file_path, e)
@@ -139,27 +152,29 @@ module RailsDevelopmentBoost
       end
       
       def remove_explicit_dependency(const_name, depending_const)
-        boost_log('EXPLICIT_DEPENDENCY', "#{const_name} -> #{depending_const}")
+        boost_log_schedule_const_removal('EXPLICIT_DEPENDENCY', "#{const_name} -> #{depending_const}", depending_const)
         super
       end
       
       def remove_dependent_constant(original_module, dependent_module)
-        boost_log('DEPENDENT_MODULE', "#{original_module._mod_name} -> #{dependent_module._mod_name}")
+        const_name = dependent_module._mod_name
+        boost_log_schedule_const_removal('DEPENDENT_MODULE', "#{original_module._mod_name} -> #{const_name}", const_name)
         super
       end
       
       def remove_autoloaded_parent_module(initial_object, parent_object)
-        boost_log('REMOVE_PARENT', "#{initial_object._mod_name} -> #{parent_object._mod_name}")
+        const_name = parent_object._mod_name
+        boost_log_schedule_const_removal('REMOVE_PARENT', "#{initial_object._mod_name} -> #{const_name}", const_name)
         super
       end
       
       def remove_child_module_constant(parent_object, full_child_const_name)
-        boost_log('REMOVE_CHILD', "#{parent_object._mod_name} -> #{full_child_const_name}")
+        boost_log_schedule_const_removal('REMOVE_CHILD', "#{parent_object._mod_name} -> #{full_child_const_name}", full_child_const_name)
         super
       end
       
       def remove_nested_constant(parent_const, child_const)
-        boost_log('REMOVE_NESTED', "#{parent_const} :: #{child_const.sub(/\A#{parent_const}::/, '')}")
+        boost_log_schedule_const_removal('REMOVE_NESTED', "#{parent_const} :: #{child_const.sub(/\A#{parent_const}::/, '')}", child_const)
         super
       end
       
