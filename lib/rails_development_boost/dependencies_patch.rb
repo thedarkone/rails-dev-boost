@@ -18,7 +18,15 @@ module RailsDevelopmentBoost
       
       patch = self
       ActiveSupport::Dependencies.module_eval do
-        alias_method :local_const_defined?, :uninherited_const_defined? unless method_defined?(:local_const_defined?) # pre 4da45060 compatibility
+        unless method_defined?(:local_const_defined?) # pre 4da45060 compatibility
+          if method_defined?(:uninherited_const_defined?)
+            alias_method :local_const_defined?, :uninherited_const_defined?
+          else # post 4.0 compat
+            def local_const_defined?(mod, const_name)
+              mod.const_defined?(const_name, false)
+            end
+          end
+        end
         remove_possible_method :remove_unloadable_constants!
         remove_possible_method :clear
         include patch
