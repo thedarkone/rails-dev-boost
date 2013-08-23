@@ -3,8 +3,10 @@ require 'active_support/descendants_tracker'
 module RailsDevelopmentBoost
   module DescendantsTrackerPatch
     def self.apply!
-      ActiveSupport::DescendantsTracker.extend self
+      # removing the .clear method across all Rails/Ruby versions
+      ActiveSupport::DescendantsTracker.remove_possible_method :clear
       ActiveSupport::DescendantsTracker.singleton_class.remove_possible_method :clear
+      ActiveSupport::DescendantsTracker.extend self
     end
     
     def delete(klass)
