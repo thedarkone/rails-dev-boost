@@ -4,8 +4,14 @@ module RailsDevelopmentBoost
   module DescendantsTrackerPatch
     def self.apply!
       # removing the .clear method across all Rails/Ruby versions
-      ActiveSupport::DescendantsTracker.remove_possible_method :clear
-      ActiveSupport::DescendantsTracker.singleton_class.remove_possible_method :clear
+      begin
+        ActiveSupport::DescendantsTracker.send(:remove_method, :clear)
+      rescue NameError
+      end
+      begin
+        ActiveSupport::DescendantsTracker.singleton_class.send(:remove_method, :clear)
+      rescue NameError
+      end
       ActiveSupport::DescendantsTracker.extend self
     end
     
