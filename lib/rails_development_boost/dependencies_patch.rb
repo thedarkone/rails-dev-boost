@@ -383,7 +383,8 @@ module RailsDevelopmentBoost
   
     def error_loading_file(file_path, e)
       LoadedFile.for(file_path).stale! if LoadedFile.loaded?(file_path)
-      @load_failure = true
+      # only the errors that blow through the full stack are load failures, this lets user code handle failed load failures by rescuing raised exceptions without triggering a full dependecies reload
+      @load_failure = true if currently_loading.size == 1
       raise e
     end
     
