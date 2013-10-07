@@ -27,15 +27,16 @@ module RailsDevelopmentBoost
         unloaded_something = false
         find_files_in(filter_directories).each do |file|
           if file.changed?
-            unload_modified_file(file)
+            schedule_modified_file(file)
             unloaded_something = true
           end
         end
         if unloaded_something
           values.each do |file|
-            unload_decorator_file(file) if file.decorator_like?
+            schedule_decorator_file(file) if file.decorator_like?
           end
         end
+        ActiveSupport::Dependencies.process_consts_scheduled_for_removal
         unloaded_something
       end
       
@@ -51,12 +52,12 @@ module RailsDevelopmentBoost
         end
       end
       
-      def unload_modified_file(file)
-        file.unload!
+      def schedule_modified_file(file)
+        file.schedule_consts_for_unloading!
       end
       
-      def unload_decorator_file(file)
-        file.unload!
+      def schedule_decorator_file(file)
+        file.schedule_consts_for_unloading!
       end
       
       def constants
@@ -148,10 +149,10 @@ module RailsDevelopmentBoost
       @constants.empty? && !INTERDEPENDENCIES[self]
     end
     
-    def unload!
+    def schedule_consts_for_unloading!
       guard_double_unloading do
-        INTERDEPENDENCIES.each_dependent_on(self) {|dependent_file| unload_dependent_file(dependent_file)}
-        @constants.dup.each {|const| ActiveSupport::Dependencies.remove_constant(const)}
+        INTERDEPENDENCIES.each_dependent_on(self) {|dependent_file| dependent_file_schedule_for_unloading!(dependent_file)}
+        @constants.dup.each {|const| schedule_const_for_unloading(const)}
         clean_up_if_necessary
       end
     end
@@ -198,8 +199,8 @@ module RailsDevelopmentBoost
       @path.eql?(other)
     end
     
-    def unload_dependent_file(dependent_file)
-      dependent_file.unload!
+    def dependent_file_schedule_for_unloading!(dependent_file)
+      dependent_file.schedule_consts_for_unloading!
     end
     
     def guard_double_unloading
@@ -238,6 +239,10 @@ module RailsDevelopmentBoost
       INTERDEPENDENCIES.each_dependent_on(self, &:stale!)
     end
     
+    def schedule_const_for_unloading(const_name)
+      ActiveSupport::Dependencies.schedule_const_for_unloading(const_name)
+    end
+    
     class << self
       def unload_modified!
         LOADED.unload_modified!
@@ -259,12 +264,12 @@ module RailsDevelopmentBoost
         CONSTANTS_TO_FILES[const_name]
       end
       
-      def unload_files_with_const!(const_name)
-        CONSTANTS_TO_FILES.each_file_with_const(const_name) {|file| unload_containing_file(const_name, file)}
+      def schedule_for_unloading_files_with_const!(const_name)
+        CONSTANTS_TO_FILES.each_file_with_const(const_name) {|file| schedule_containing_file(const_name, file)}
       end
       
-      def unload_containing_file(const_name, file)
-        file.unload!
+      def schedule_containing_file(const_name, file)
+        file.schedule_consts_for_unloading!
       end
       
       def const_unloaded(const_name)
