@@ -476,7 +476,7 @@ module RailsDevelopmentBoost
     
     def clear_tracks_of_removed_const(const_name, object = nil)
       autoloaded_constants.delete(const_name)
-      module_cache.remove_const(const_name, object)
+      @module_cache.remove_const(const_name, object)
       LoadedFile.const_unloaded(const_name)
     end
     
