@@ -47,12 +47,13 @@ module RailsDevelopmentBoost
       if new_value
         if !Async.usable?
           msg = 'Unable to start rails-dev-boost in an asynchronous mode. '
-          if listen_error = Reactor.listen_load_error
-            msg << "Please install the missing `listen` gem dependencies for even faster rails-dev-boost experience.\n#{listen_error}\n"
+          if gem_error = Reactor.gem_load_error
+            msg << "Please install the missing gem for even faster rails-dev-boost experience:\n#{gem_error}\n" <<
+                   "If you can't use the suggest gem version please let me know at https://github.com/thedarkone/rails-dev-boost/issues !\n"
           else
-            msg << "Are you running on an OS not supported by the `listen` gem?\n"
+            msg << "Are you running on a OS that is 'async-unsupported' by rails-dev-boost? Please open an issue on github: https://github.com/thedarkone/rails-dev-boost/issues !"
           end
-          msg << "To get rid of this message disable the rails-dev-boost's async mode by putting the following code " + 
+          msg << "\nTo get rid of this message disable the rails-dev-boost's async mode by putting the following code " +
                  "in a Rails initializer file (these are found in config/initializers directory):\n" +
                  "\n\tRailsDevelopmentBoost.async = false if defined?(RailsDevelopmentBoost)\n\n"
           async_warning(msg)
