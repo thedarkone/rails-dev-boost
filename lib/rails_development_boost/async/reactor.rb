@@ -1,4 +1,3 @@
-require 'listen'
 require 'thread'
 require 'set'
 
@@ -6,8 +5,21 @@ module RailsDevelopmentBoost
   module Async
     # Not using Listen gem directly, because I don't want to be storing/checking .rb files' SHA contents and would like to rely on mtime values exclusively.
     module Reactor
+      class MissingNativeGem < StandardError
+        def initialize(gem_name, version)
+          gem_version_msg = indented_code("gem '#{gem_name}', '#{version}'")
+          super("by adding the following to your Gemfile:\n#{gem_version_msg}\n\nThis can go into the same :development group if (you are using one):\n" <<
+                indented_code("group :development do\n\tgem 'rails-dev-boost', :github => 'thedarkone/rails-dev-boost'#{gem_version_msg}\nend\n"))
+        end
+        
+        private
+        def indented_code(msg)
+          "\n\t" << msg.gsub("\n", "\n\t")
+        end
+      end
+      
       extend self
-      attr_reader :listen_load_error
+      attr_reader :gem_load_error
       
       def get
         if impl = implementation
@@ -21,8 +33,8 @@ module RailsDevelopmentBoost
       
       def find_usable_implementation
         [Darwin, Linux, Windows].find(&:usable?)
-      rescue Listen::DependencyManager::Error => e
-        @listen_load_error ||= "Error message from the `listen` gem:\n\t" << e.message.gsub("\n", "\n\t")
+      rescue MissingNativeGem => e
+        @gem_load_error ||= e.message
         nil
       end
       
@@ -63,19 +75,36 @@ module RailsDevelopmentBoost
           @watcher.run
         end
         
-        def self.usable?
-          if adapter = corresponding_listen_adapter
-            adapter.usable?
+        class << self
+          def usable?
+            gem_check! if platform_match?
           end
-        end
-        
-        def self.corresponding_listen_adapter
-          Listen::Adapters.const_get(name[/[^:]+\Z/])
-        rescue NameError
+          
+          private
+          def platform_match?
+            require 'rbconfig'
+            RbConfig::CONFIG['target_os'] =~ self::TARGET_OS_REGEX
+          end
+          
+          def gem_check!
+            defined?(@gem_loaded) ? @gem_loaded : @gem_loaded = load_gem!
+          end
+          
+          def load_gem!
+            gem(self::GEM_NAME, self::GEM_VERSION)
+            require(self::GEM_NAME)
+            true
+          rescue Gem::LoadError
+            raise MissingNativeGem.new(self::GEM_NAME, self::GEM_VERSION)
+          end
         end
       end
 
       class Darwin < Base
+        TARGET_OS_REGEX = /darwin(1.+)?$/i
+        GEM_NAME        = 'rb-fsevent'
+        GEM_VERSION     = '>= 0.9.1'
+        
         private
         def create_watcher
           FSEvent.new
@@ -84,6 +113,10 @@ module RailsDevelopmentBoost
 
       # Errors, comments and other gotchas taken from Listen gem (https://github.com/guard/listen)
       class Linux < Base
+        TARGET_OS_REGEX = /linux/i
+        GEM_NAME        = 'rb-inotify'
+        GEM_VERSION     = '>= 0.8.8'
+        
         EVENTS = [:recursive, :attrib, :create, :delete, :move, :close_write]
         
         # The message to show when the limit of inotify watchers is not enough
@@ -99,7 +132,13 @@ module RailsDevelopmentBoost
         def watch_internal(directories)
           directories.each do |directory|
             @watcher.watch(directory, *EVENTS) do |event|
-              yield [File.dirname(event.absolute_name)] unless root?(event) || file_event_on_a_dir?(event)
+              unless root?(event) || file_event_on_a_dir?(event)
+                if File.file?(absolute_name = event.absolute_name)
+                  yield [File.dirname(absolute_name)]
+                elsif File.directory?(absolute_name)
+                  yield [absolute_name]
+                end
+              end
             end
           end
         rescue Errno::ENOSPC
@@ -130,6 +169,10 @@ module RailsDevelopmentBoost
       end
       
       class Windows < Base
+        TARGET_OS_REGEX = /mswin|mingw|cygwin/i
+        GEM_NAME        = 'wdm'
+        GEM_VERSION     = '>= 0.0.3'
+        
         private
         def watch_internal(directories)
           directories.each do |directory|
