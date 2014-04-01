@@ -8,7 +8,7 @@ Alternative to Robert Pankowecki's [`active_reload`](https://github.com/paneq/ac
 
 ## Branches
 
-If you are using **Rails 3**: [`rails-dev-boost/master`](http://github.com/thedarkone/rails-dev-boost/tree/master) branch.
+If you are using **Rails 3 and newer**: [`rails-dev-boost/master`](http://github.com/thedarkone/rails-dev-boost/tree/master) branch.
 
 If you are using **Rails 2.3**: [`rails-dev-boost/rails-2-3`](http://github.com/thedarkone/rails-dev-boost/tree/rails-2-3) branch.
 
@@ -286,6 +286,15 @@ By default `rails-dev-boost` now runs in an "async" mode, watching and unloading
 To disable the async mode put the following code in a Rails initializer file (these are found in `config/initializers` directory):
 ```ruby
 RailsDevelopmentBoost.async = false
+```
+
+## `routes.rb` potentially not reloading
+
+Since Rails 4.0 `ActiveSupport` now by default reloads `routes.rb` file **if any other auto-loaded `.rb` has changed**. This behavior is different from all previous Rails versions, where `routes.rb` had been reloaded **only if the `routes.rb` file itself had been changed**. This now results in `routes.rb` being reloading on all requests in which any other unrelated `.rb` has been changed, it is in my opinion an unnecessary slowdown, thus `rails-dev-boost` by default reverts Rails to the pre Rails 4.0 behavior.
+
+To disable this patch and revert to the default Rails 4.0 behavior - put the following code in a Rails initializer file (these are found in `config/initializers` directory):
+```ruby
+RailsDevelopmentBoost.reload_routes_on_any_change = true
 ```
 
 ## FAQ

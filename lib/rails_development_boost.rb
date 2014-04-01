@@ -62,4 +62,9 @@ module RailsDevelopmentBoost
   def self.async=(new_value)
     DependenciesPatch.async = new_value
   end
+  
+  class << self
+    attr_accessor :reload_routes_on_any_change
+  end
+  self.reload_routes_on_any_change = false
 end
