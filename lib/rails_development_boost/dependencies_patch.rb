@@ -494,7 +494,9 @@ module RailsDevelopmentBoost
     
     def clear_tracks_of_removed_const(const_name, object = nil)
       autoloaded_constants.delete(const_name)
-      @module_cache.remove_const(const_name, object)
+      # @module_cache might be nil if remove_constant has been called with a non-existent constant, ie: it hasn't been checked with `qualified_const_defined?`. Because AS::Dep doesn't blow, neither
+      # should we.
+      @module_cache.remove_const(const_name, object) if @module_cache
       LoadedFile.const_unloaded(const_name)
     end
     
