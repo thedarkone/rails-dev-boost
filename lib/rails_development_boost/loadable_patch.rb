@@ -5,11 +5,10 @@ module RailsDevelopmentBoost
     end
     
     def load(file, wrap = false)
-      expanded_path = File.expand_path(file)
+      real_path = DependenciesPatch::Util.load_path_to_real_path(file)
       # force the manual #load calls for autoloadable files to go through the AS::Dep stack
-      if ActiveSupport::Dependencies.in_autoload_path?(expanded_path)
-        expanded_path << '.rb' unless expanded_path =~ /\.(rb|rake)\Z/
-        ActiveSupport::Dependencies.load_file_from_explicit_load(expanded_path)
+      if ActiveSupport::Dependencies.in_autoload_path?(real_path)
+        ActiveSupport::Dependencies.load_file_from_explicit_load(real_path)
       else
         super
       end

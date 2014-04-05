@@ -17,6 +17,10 @@ module RailsDevelopmentBoost
         end
       end
       
+      def load(file, wrap = false)
+        ActiveSupport::Dependencies.loading_routes_file(file) { super }
+      end
+      
       def execute_if_updated
         old_in_execute_if_updated = @in_execute_if_updated
         @in_execute_if_updated = true

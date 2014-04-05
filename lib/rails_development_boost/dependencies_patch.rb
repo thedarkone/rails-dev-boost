@@ -33,6 +33,7 @@ module RailsDevelopmentBoost
         alias_method_chain :load_file, 'constant_tracking'
         alias_method_chain :remove_constant, 'handling_of_connections'
         extend patch
+        @routes_path_loading = nil
       end
       
       ActiveSupport::Dependencies::Loadable.module_eval do
@@ -99,6 +100,12 @@ module RailsDevelopmentBoost
           return true if LoadedFile.loaded_constant?(const_name)
         end while const_name.sub!(/::[^:]+\Z/, NOTHING)
         false
+      end
+      
+      def load_path_to_real_path(path)
+        expanded_path = File.expand_path(path)
+        expanded_path << '.rb' unless path =~ /\.r(?:b|ake)\Z/
+        expanded_path
       end
     end
     
@@ -237,6 +244,14 @@ module RailsDevelopmentBoost
       currently_loading.pop
     end
     
+    def loading_routes_file(path)
+      prev_value = @routes_path_loading
+      @routes_path_loading = Util.load_path_to_real_path(path)
+      yield
+    ensure
+      @routes_path_loading = prev_value
+    end
+    
     def associate_constants_to_file(constants, file_path)
       # freezing strings before using them as Hash keys is slightly more memory efficient
       constants.map!(&:freeze)
@@ -353,6 +368,9 @@ module RailsDevelopmentBoost
       
         # Associate newly loaded constants to the file just loaded
         associate_constants_to_file(new_constants, path)
+        if routes_path_loading = @routes_path_loading
+          RoutesLoadedFile.for(routes_path_loading).associate_with(LoadedFile.for(path))
+        end
       end
 
       result
