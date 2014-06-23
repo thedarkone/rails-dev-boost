@@ -412,8 +412,7 @@ module RailsDevelopmentBoost
       remove_explicit_dependencies_of(const_name)
       remove_dependent_modules(object)
       # TODO move these into the cleanup phase
-      update_activerecord_related_references(object)
-      update_mongoid_related_references(object)
+      clean_up_references(object)
     end
     
     def remove_nested_constants(const_name)
@@ -508,10 +507,25 @@ module RailsDevelopmentBoost
       schedule_const_for_unloading(dependent_module._mod_name)
     end
     
+    def clean_up_references(object)
+      clean_up_methods = []
+      clean_up_methods << :update_activerecord_related_references if defined?(ActiveRecord)
+      clean_up_methods << :update_mongoid_related_references      if defined?(Mongoid::Document)
+      clean_up_methods << :update_authlogic_related_references    if defined?(Authlogic::Session::Base)
+      
+      # compile the clean-up method names to avoid the constant defined? check overhead
+      RailsDevelopmentBoost::DependenciesPatch.class_eval <<-RUBY_EVAL, __FILE__, __LINE__
+        def clean_up_references(object)
+          #{clean_up_methods.map {|clean_up_method| "#{clean_up_method}(object)"}.join(';')}
+        end
+      RUBY_EVAL
+      
+      clean_up_methods.each {|clean_up_method| send(clean_up_method, object)}
+    end
+    
     AR_REFLECTION_CACHES = [:@klass]
     # egrep -ohR '@\w*([ck]lass|refl|target|own)\w*' activerecord | sort | uniq
     def update_activerecord_related_references(klass)
-      return unless defined?(ActiveRecord)
       return unless klass < ActiveRecord::Base
 
       # Reset references held by macro reflections (klass is lazy loaded, so
@@ -523,7 +537,7 @@ module RailsDevelopmentBoost
     
     MONGOID_RELATION_CACHES = [:@klass, :@inverse_klass]
     def update_mongoid_related_references(klass)
-      if defined?(Mongoid::Document) && klass < Mongoid::Document
+      if klass < Mongoid::Document
         while (superclass = Util.first_non_anonymous_superclass(superclass || klass)) != Object && superclass < Mongoid::Document
           schedule_const_for_unloading(superclass._mod_name) # this is necessary to nuke the @_types caches
         end
@@ -531,6 +545,13 @@ module RailsDevelopmentBoost
         @module_cache.each_dependent_on(Mongoid::Document) do |model|
           clean_up_relation_caches(model.relations, klass, MONGOID_RELATION_CACHES)
         end
+      end
+    end
+    
+    def update_authlogic_related_references(klass)
+      Authlogic::Session::Base.descendants.each do |descendant|
+        # opting for remove_dependent_constant instead of niling @klass because Authlogic allows users to set the klass themselves (via authenticate_with)
+        remove_dependent_constant(klass, descendant) if klass == descendant.instance_variable_get(:@klass)
       end
     end
     
