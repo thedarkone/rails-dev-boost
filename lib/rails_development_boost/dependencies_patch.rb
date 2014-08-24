@@ -104,7 +104,7 @@ module RailsDevelopmentBoost
       
       def load_path_to_real_path(path)
         expanded_path = File.expand_path(path)
-        expanded_path << '.rb' unless path =~ /\.r(?:b|ake)\Z/
+        expanded_path << '.rb' unless expanded_path =~ /\.r(?:b|ake)\Z/
         expanded_path
       end
     end
