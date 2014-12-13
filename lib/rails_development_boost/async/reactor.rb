@@ -176,8 +176,11 @@ module RailsDevelopmentBoost
         private
         def watch_internal(directories)
           directories.each do |directory|
-            @watcher.watch_recursively(directory) do |change|
-              yield [File.dirname(change.path)]
+            begin
+              @watcher.watch_recursively(directory) do |change|
+                yield [File.dirname(change.path)]
+              end
+            rescue WDM::InvalidDirectoryError
             end
           end
         end
