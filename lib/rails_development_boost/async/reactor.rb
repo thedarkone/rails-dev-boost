@@ -131,6 +131,7 @@ module RailsDevelopmentBoost
         private
         def watch_internal(directories)
           directories.each do |directory|
+            next unless File.directory?(directory) # rb-inotify raises Errno::ENOENT on non-existent directories
             @watcher.watch(directory, *EVENTS) do |event|
               unless root?(event) || file_event_on_a_dir?(event)
                 if File.file?(absolute_name = event.absolute_name)
@@ -176,11 +177,9 @@ module RailsDevelopmentBoost
         private
         def watch_internal(directories)
           directories.each do |directory|
-            begin
-              @watcher.watch_recursively(directory) do |change|
-                yield [File.dirname(change.path)]
-              end
-            rescue WDM::InvalidDirectoryError
+            next unless File.directory?(directory) # wdm raises WDM::InvalidDirectoryError on non-existent directories
+            @watcher.watch_recursively(directory) do |change|
+              yield [File.dirname(change.path)]
             end
           end
         end
