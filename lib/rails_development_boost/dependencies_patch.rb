@@ -307,10 +307,21 @@ module RailsDevelopmentBoost
     end
     
     def handle_already_autoloaded_constants! # we might be late to the party and other gems/plugins might have already triggered autoloading of some constants
-      loaded.each do |require_path|
-        unless load_once_path?(require_path)
-          associate_constants_to_file(autoloaded_constants, "#{require_path}.rb") # slightly heavy-handed..
-        end
+      # puts "handle_already_autoloaded_constants!: #{loaded.inspect}"
+      # fake_routes_file = RoutesLoadedFile.for('fake_routes_file')
+      each_loaded_rb_file_path do |loaded_rb_file_path|
+        associate_constants_to_file(autoloaded_constants, loaded_rb_file_path) # slightly heavy-handed, because afterwards it is impossible to tell which file contained which constant
+      end
+    end
+    
+    # This attempts to fix a problem of autoloaded constants being directly referenced by Rails routes, ie: `mount Twitter::API => '/twitter-api'` (where Twitter::API is Rails autoloaded).
+    # The problem is compounded during Rails initialization, if a code (for example in an initializer) loads an autoloaded constant and subsequently routes are evaluated. Normally rails-dev-boost
+    # tries to detect a routes -> const dependency by the fact that during a routes evaluation a new constant autoloading is triggered, but if it already exists (because of an initializer)
+    # this link is broken.
+    def associate_all_loaded_consts_to_routes!
+      fake_routes_file = RoutesLoadedFile.for('fake_routes_file') # doesn't actually have to point to a real .rb file
+      each_loaded_rb_file_path do |loaded_rb_file_path|
+        fake_routes_file.associate_with(LoadedFile.for(loaded_rb_file_path))
       end
     end
     
@@ -331,6 +342,12 @@ module RailsDevelopmentBoost
     end
     
   private
+    def each_loaded_rb_file_path
+      loaded.each do |require_path|
+        yield "#{require_path}.rb" unless load_once_path?(require_path)
+      end
+    end
+    
     def process_consts_scheduled_for_removal_internal
       heap   = constants_to_remove
       result = nil

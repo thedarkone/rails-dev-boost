@@ -22,6 +22,13 @@ module RailsDevelopmentBoost
       end
       
       def execute_if_updated
+        # Upon first ever routes execution (during Rails initialization/boot), note that putting this run initializer doesn't work, because of the API inflexibility, it is impossible to specify that
+        # an initializer is run right before the routes initializer - Rails only allows to specify that it should *run before in general* (a ton of other initializers might run before our initializer
+        # and a routes initializer).
+        unless @executed_at_least_once
+          @executed_at_least_once = true
+          ActiveSupport::Dependencies.associate_all_loaded_consts_to_routes! # association any existing autoloaded constants to routes
+        end
         old_in_execute_if_updated = @in_execute_if_updated
         @in_execute_if_updated = true
         super
