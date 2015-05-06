@@ -53,6 +53,7 @@ module RailsDevelopmentBoost
   autoload :ReferenceCleanupPatch,   'rails_development_boost/reference_cleanup_patch'
   autoload :Reloader,                'rails_development_boost/reloader'
   autoload :RequiredDependency,      'rails_development_boost/required_dependency'
+  autoload :RoutesLoadedFile,        'rails_development_boost/routes_loaded_file'
   autoload :ViewHelpersPatch,        'rails_development_boost/view_helpers_patch'
   
   def self.debug!
