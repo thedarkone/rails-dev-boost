@@ -74,7 +74,7 @@ module RailsDevelopmentBoost
     
     private
     def in_console?
-      (defined?(IRB) && IRB.CurrentContext) || defined?(Pry)
+      defined?(Rails::Console)
     end
     
     def async_warning(msg)
