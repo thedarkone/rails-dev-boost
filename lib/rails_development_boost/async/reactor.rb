@@ -45,8 +45,13 @@ module RailsDevelopmentBoost
         end
         
         def watch(directories, &block)
-          @directories.merge(directories)
-          watch_internal(directories, &block)
+          directories_as_strs = directories.map do |dir|
+            @directories.add(dir)
+            dir = dir.to_s # handle `dir` being a Pathname, while storing the Pathname obj in @directories Set for faster alive_and_watching? tests
+            @directories.add(dir)
+            dir
+          end
+          watch_internal(directories_as_strs, &block)
         end
 
         def start!
