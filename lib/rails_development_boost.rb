@@ -13,7 +13,8 @@ module RailsDevelopmentBoost
         else
           ActionDispatch::Callbacks.before(:prepend => true)    { ActiveSupport::Dependencies.unload_modified_files! }
         end
-        
+
+        ::Sprockets::Environment.prepend(Sprockets::PathCacheEnvironment)
         DependenciesPatch.enable_async_mode_by_default!
       end
     end
@@ -53,7 +54,9 @@ module RailsDevelopmentBoost
   autoload :ReferenceCleanupPatch,   'rails_development_boost/reference_cleanup_patch'
   autoload :Reloader,                'rails_development_boost/reloader'
   autoload :RequiredDependency,      'rails_development_boost/required_dependency'
+  autoload :Sprockets,               'rails_development_boost/sprockets'
   autoload :RoutesLoadedFile,        'rails_development_boost/routes_loaded_file'
+
   autoload :ViewHelpersPatch,        'rails_development_boost/view_helpers_patch'
   
   def self.debug!
